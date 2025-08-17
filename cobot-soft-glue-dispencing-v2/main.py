@@ -1,32 +1,27 @@
-import sys
+# from GlueDispensingApplication.tools.Trolly import Trolly
+import logging
+import os
 
-from PyQt6.QtWidgets import QApplication
-
-from GlueDispensingApplication.GlueSprayingApplication import GlueSprayingApplication
+from API.MessageBroker import MessageBroker
+from API.shared.workpiece.WorkpieceService import WorkpieceService
 from GlueDispensingApplication.DomesticRequestSender import DomesticRequestSender
+from GlueDispensingApplication.GlueSprayingApplication import GlueSprayingApplication
+from GlueDispensingApplication.SensorPublisher import SensorPublisher
+from GlueDispensingApplication.robot.RobotCalibrationService import RobotCalibrationService
+from GlueDispensingApplication.robot.RobotConfig import *
+from GlueDispensingApplication.robot.RobotController import RobotController
+from GlueDispensingApplication.robot.RobotService import RobotService
+# IMPORT CONTROLLERS
+from GlueDispensingApplication.settings.SettingsController import SettingsController
 # from GlueDispensingApplication.RequestHandler import RequestHandler
 # IMPORT SERVICES
 from GlueDispensingApplication.settings.SettingsService import SettingsService
-from GlueDispensingApplication.vision.VisionService import VisionServiceSingleton
+from GlueDispensingApplication.tools.GlueCell import GlueDataFetcher
 from GlueDispensingApplication.tools.GlueNozzleService import GlueNozzleService
-from API.shared.workpiece.WorkpieceService import WorkpieceService
-from GlueDispensingApplication.robot.RobotService import RobotService
-from GlueDispensingApplication.robot.RobotCalibrationService import RobotCalibrationService
-# IMPORT CONTROLLERS
-from GlueDispensingApplication.settings.SettingsController import SettingsController
-from GlueDispensingApplication.vision.CameraSystemController import CameraSystemController
-from GlueDispensingApplication.tools.GlueNozzleController import GlueNozzleController
-from GlueDispensingApplication.workpiece.WorkpieceController import WorkpieceController
-from GlueDispensingApplication.robot.RobotController import RobotController
-from GlueDispensingApplication.robot.RobotConfig import  *
-from API.MessageBroker import MessageBroker
-from GlueDispensingApplication.SensorPublisher import SensorPublisher
 from GlueDispensingApplication.tools.ProximitySensor import ProximitySensor
-from GlueDispensingApplication.tools.GlueCell import GlueCellsManagerSingleton,GlueDataFetcher
-# from GlueDispensingApplication.tools.Trolly import Trolly
-import logging
-
-import os
+from GlueDispensingApplication.vision.CameraSystemController import CameraSystemController
+from GlueDispensingApplication.vision.VisionService import VisionServiceSingleton
+from GlueDispensingApplication.workpiece.WorkpieceController import WorkpieceController
 
 if os.environ.get("WAYLAND_DISPLAY"):
     os.environ["QT_QPA_PLATFORM"] = "xcb"
@@ -57,7 +52,7 @@ testRobot = False
 if newGui:
     from pl_gui.PlGui import PlGui
 else:
-    from pl_gui.newMenu.newNavigationMenu import ApplicationDemo, MockController
+    pass
 
 if testRobot:
     from GlueDispensingApplication.robot.RobotWrapper import TestRobotWrapper
@@ -114,7 +109,7 @@ if __name__ == "__main__":
     # INIT MAIN WINDOW
 
     if newGui:
-        from pl_gui.controller.Controller import Controller
+        from pl_gui.main_application.controller.Controller import Controller
 
         controller= Controller(domesticRequestSender)
 
@@ -125,8 +120,8 @@ if __name__ == "__main__":
         # gui = GUI_NEW(domesticRequestSender)
         # gui.start()
     else:
-        from pl_gui.newMenu.controller.Controller import Controller
-        from pl_gui.newMenu.NewGui import PlGui
+        from pl_gui.main_application.controller.Controller import Controller
+        from pl_gui.main_application.MainGuiApplication import PlGui
 
         controller= Controller(domesticRequestSender)
         gui = PlGui(controller=controller)

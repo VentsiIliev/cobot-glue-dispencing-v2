@@ -1,0 +1,11 @@
+PyQt6
+ezdxf
+filelock
+pandas
+opencv-python
+requests
+minimalmodbus
+matplotlib
+pyqtgraph
+qrcode
+shapely

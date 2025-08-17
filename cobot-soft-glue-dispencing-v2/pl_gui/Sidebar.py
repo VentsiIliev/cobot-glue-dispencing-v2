@@ -115,3 +115,12 @@ class Sidebar(Drawer,QFrame):
         for button in self.buttons:
             button.setChecked(False)
 
+if  __name__ == "__main__":
+    # Example usage
+    from PyQt6.QtWidgets import QApplication
+    import sys
+
+    app = QApplication(sys.argv)
+    sidebar = Sidebar(800, [])
+    sidebar.show()
+    sys.exit(app.exec())

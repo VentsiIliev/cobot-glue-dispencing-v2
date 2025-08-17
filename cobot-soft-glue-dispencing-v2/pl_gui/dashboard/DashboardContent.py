@@ -9,7 +9,7 @@ from pl_gui.ManualControlWidget import ManualControlWidget
 from pl_gui.Endpoints import *
 from PyQt6.QtCore import QPoint, QPropertyAnimation,pyqtSignal
 from pl_gui.SessionInfoWidget import SessionInfoWidget
-from pl_gui.controller.ButtonKey import ButtonKey
+from pl_gui.main_application.controller.ButtonKey import ButtonKey
 RESOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),"..", "resources")
 RUN_BUTTON_ICON_PATH = os.path.join(RESOURCE_DIR, "pl_ui_icons", "RUN_BUTTON.png")
 

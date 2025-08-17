@@ -54,3 +54,23 @@ class FloatingToggleButton(QPushButton):
     def set_arrow_direction(self, direction: str):
         if direction in ["◀", "▶"]:
             self.setText(direction)
+
+if __name__ == "__main__":
+    from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout
+
+    app = QApplication([])
+
+    window = QWidget()
+    layout = QVBoxLayout(window)
+
+    def toggle_callback():
+        print("Button toggled!")
+
+    button = FloatingToggleButton(window, on_toggle_callback=toggle_callback)
+    layout.addWidget(button)
+
+    window.setLayout(layout)
+    window.resize(400, 300)
+    window.show()
+
+    app.exec()

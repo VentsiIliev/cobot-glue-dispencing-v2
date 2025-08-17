@@ -1,10 +1,6 @@
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QScrollArea, QWidget, QVBoxLayout, QSizePolicy
-from PySide6.QtWidgets import QScroller
+from PyQt6.QtWidgets import QSizePolicy
 
-from API.MessageBroker import MessageBroker
 from API.localization.LanguageResourceLoader import LanguageResourceLoader
-from API.localization.enums.Message import Message
 from pl_gui.virtualKeyboard.VirtualKeyboard import FocusDoubleSpinBox, FocusSpinBox
 
 

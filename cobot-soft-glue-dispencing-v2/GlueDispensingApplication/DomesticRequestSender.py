@@ -1,6 +1,6 @@
 from API.RequestSender import RequestSender
 from API.Request import Request
-from archive.RequestHandler import RequestHandler
+from API.RequestHandler import RequestHandler
 
 class DomesticRequestSender(RequestSender):
     def __init__(self, requestHandler: RequestHandler):
