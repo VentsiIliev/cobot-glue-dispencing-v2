@@ -1,0 +1,15 @@
+{
+    "Spray Width": 6.0,
+    "Spraying Height": 116.0,
+    "Fan Speed": 59.0,
+    "Generator-Glue Delay": 1.1,
+    "Pump Speed": 5999.0,
+    "Pump Reverse Time": 0.5,
+    "Pump Speed Reverse": 0.0,
+    "RZ Angle": 0.0,
+    "Generator Timeout": 9.983333333333333,
+    "Time Before Motion": 2.0,
+    "Reach Start Threshold": 2.0,
+    "Time Before Stop": 1,
+    "Reach End Threshold": 1
+}

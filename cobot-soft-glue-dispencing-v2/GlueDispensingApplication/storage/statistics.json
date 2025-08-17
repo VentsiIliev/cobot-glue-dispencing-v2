@@ -1,0 +1,23 @@
+{
+  "generator_on_seconds": 0,
+  "pump_on_seconds": {
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 0
+  },
+  "pump_rpm": {
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 0
+  },
+  "relays_click": {
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 0
+  },
+  "pump_on_seconds_1": 0,
+  "pump_rpm_1": 0
+}
