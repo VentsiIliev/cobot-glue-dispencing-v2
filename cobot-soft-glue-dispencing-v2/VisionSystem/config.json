@@ -1,0 +1,10 @@
+{
+    "Index": 0,
+    "Width": 1280,
+    "Height": 720,
+    "Skip frames": 30,
+    "Threshold": 100,
+    "Epsilon": 0.004,
+    "Contour detection": true,
+    "Draw contours": true
+}
