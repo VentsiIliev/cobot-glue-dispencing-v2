@@ -20,7 +20,7 @@ class ExpandedFolderView(QFrame):
 
     close_requested = pyqtSignal()
     app_selected = pyqtSignal(str)
-    back_to_main_requested = pyqtSignal()
+
     close_current_app_requested = pyqtSignal()
 
     def __init__(self, folder_ref, parent=None):
@@ -39,6 +39,15 @@ class ExpandedFolderView(QFrame):
         self.setup_ui()
         self.setup_smooth_animations()
 
+    def close_from_outside(self):
+        """Handle close request from outside (clicking outside the folder)"""
+        if self._current_app_name:
+            # If app is running, don't remove floating icon, just hide expanded view
+            if not self._is_hidden_mode:
+                self.hide_and_show_floating_icon()
+        else:
+            # No app running, normal close behavior
+            self.safe_close()
     def setup_smooth_animations(self):
         """Material Design animation system"""
         self.opacity_animation = QPropertyAnimation(self, b"windowOpacity")
@@ -413,6 +422,14 @@ class ExpandedFolderView(QFrame):
         print(f"Material Design close app: {self._current_app_name}")
         self.close_current_app_requested.emit()
         self.hide_close_app_button()
+
+        # When back button is pressed, fully close the folder
+        if self._is_hidden_mode and self.floating_icon:
+            self.floating_icon.hide_with_animation()
+            QTimer.singleShot(200, self._complete_close)
+        else:
+            # Not in hidden mode, trigger normal close
+            self.close_requested.emit()
 
     def set_app_running_state(self, app_name=None):
         """Update app state with Material Design consistency"""

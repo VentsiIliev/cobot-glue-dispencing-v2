@@ -25,13 +25,13 @@ from pl_gui.Endpoints import QR_LOGIN, GO_TO_LOGIN_POS, UPDATE_CAMERA_FEED, STAR
 # Suppress specific DeprecationWarning
 warnings.filterwarnings("ignore", category=DeprecationWarning, message="sipPyTypeDict() is deprecated")
 RESOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..", "resources")
-print("Resource directory:", RESOURCE_DIR)
+
 BACKGROUND = os.path.join(RESOURCE_DIR, "Background_&_Logo.png")
 LOGIN_BUTTON = os.path.join(RESOURCE_DIR, "pl_ui_icons", "LOGIN_BUTTON_SQUARE.png")
 LOGIN_QR_BUTTON = os.path.join(RESOURCE_DIR, "pl_ui_icons", "QR_CODE_BUTTON_SQUARE.png")
 # MACHINE_BUTTONS_IMAGE = os.path.join(RESOURCE_DIR, "pl_ui_icons", "MACHINE_BUTTONS.png")
 COBOT_IMAGE = os.path.join(RESOURCE_DIR, "pl_ui_icons", "COBOT_IMAGE.png")
-print("cobot image", COBOT_IMAGE)
+
 MACHINE_BUTTONS_IMAGE = os.path.join(RESOURCE_DIR, "pl_ui_icons", "MACHINE_BUTTONS_1.png")
 LOGO = os.path.join(RESOURCE_DIR, "pl_ui_icons", "logo.ico")
 

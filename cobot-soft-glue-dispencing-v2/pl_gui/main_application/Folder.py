@@ -340,7 +340,10 @@ class Folder(QFrame):
 
     def close_folder(self):
         """Material Design folder closing with elevation transition"""
-        self.app_running = False
+        # Don't reset app_running if we're just collapsing to floating icon
+        if not (self.expanded_view and self.expanded_view._current_app_name):
+            self.app_running = False
+
         rect = self.folder_preview.geometry()
         center = rect.center()
 
@@ -354,13 +357,24 @@ class Folder(QFrame):
         )
 
         if self.expanded_view:
-            self.expanded_view.fade_out()
+            # Only fade out if not transitioning to floating icon
+            if not (self.expanded_view._current_app_name and not self.expanded_view._is_hidden_mode):
+                self.expanded_view.fade_out()
+
         if self.overlay:
-            self.overlay.fade_out()
-            QTimer.singleShot(300, self._cleanup_views)  # Material timing
+            # Only fade out overlay if no app is running or floating icon isn't shown
+            if not (self.expanded_view and self.expanded_view._current_app_name and self.expanded_view._is_hidden_mode):
+                self.overlay.fade_out()
+                QTimer.singleShot(300, self._cleanup_views)  # Material timing
+            else:
+                # Keep overlay but make it more transparent
+                self.overlay.setStyleSheet("background-color: rgba(0, 0, 0, 0.05);")
 
         self.is_open = False
-        self.folder_closed.emit()
+
+        # Only emit folder_closed if we're actually fully closing (no floating icon)
+        if not (self.expanded_view and self.expanded_view._current_app_name):
+            self.folder_closed.emit()
 
     def on_close_current_app_requested(self):
         """Material Design app close handling"""

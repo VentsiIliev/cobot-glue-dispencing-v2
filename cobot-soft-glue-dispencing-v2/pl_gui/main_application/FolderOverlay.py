@@ -35,6 +35,16 @@ class FolderOverlay(QWidget):
     def mousePressEvent(self, event):
         """Close folder when clicking outside, unless disabled"""
         if not self.disable_overlay_close:
+            # Check if we should collapse to floating icon or fully close
+            if hasattr(self.parent(), 'current_app_folder') and hasattr(self.parent().current_app_folder,
+                                                                        'expanded_view'):
+                expanded_view = self.parent().current_app_folder.expanded_view
+                if expanded_view and expanded_view._current_app_name:
+                    # App is running - collapse to floating icon
+                    expanded_view.close_from_outside()
+                    return
+
+            # No app running - normal close
             self.close_requested.emit()
         super().mousePressEvent(event)
 
