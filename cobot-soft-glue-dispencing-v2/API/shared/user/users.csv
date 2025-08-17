@@ -1,0 +1,4 @@
+ID,FIRST_NAME,LAST_NAME,PASSWORD,ROLE
+1,Operator,Operator,pass,Operator
+2,Admin,Admin,pass,Admin
+3,Service,Service,pass,Role.SERVICE
