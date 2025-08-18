@@ -25,9 +25,6 @@ from pl_gui.main_application.appWidgets.CreateWorkpieceOptionsAppWidget import C
 from pl_gui.Header import Header
 from pl_gui.main_application.controller.CreateWorkpieceManager import CreateWorkpieceManager
 
-
-
-
 # Resource paths
 RESOURCES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources")
 PLACEHOLDER_ICON = os.path.join(RESOURCES_DIR, "placeholder_icon.png")
@@ -38,7 +35,6 @@ GALLERY_ICON = os.path.join(RESOURCES_DIR, "work/LIBRARY_BUTTON_SQARE.png")
 CREATE_WORKPIECE_ICON = os.path.join(RESOURCES_DIR, "work/CREATE_WORKPIECE_BUTTON_SQUARE.png")
 DASHBOARD_ICON = os.path.join(RESOURCES_DIR, "work/dashboard.png")
 
-
 # service icons
 SERVICE_ICON = os.path.join(RESOURCES_DIR, "service/SETTINGS_BUTTON.png")
 SETTINGS_ICON = os.path.join(RESOURCES_DIR, "service/SETTINGS_BUTTON.png")
@@ -48,21 +44,18 @@ CALIBRATION_ICON = os.path.join(RESOURCES_DIR, "service/CALIBRATION_BUTTON_SQUAR
 USER_MANAGEMENT_ICON = os.path.join(RESOURCES_DIR, "administration/user_management.png")
 
 
-
-
 class ApplicationDemo(QWidget):
     """Demo application showing the Android folder widget with QStackedWidget for app management"""
 
-    def __init__(self,controller):
+    def __init__(self, controller):
         super().__init__()
-        self.controller= controller
+        self.controller = controller
         self.folders = []  # Keep track of all folders
         self.current_running_app = None  # Track currently running app
         self.current_app_folder = None  # Track which folder has the running app
         self.stacked_widget = None  # The main stacked widget
         self.folder_page = None  # The main folder page widget
         self.setup_ui()
-
 
     def on_folder_opened(self, opened_folder):
         """Handle when a folder is opened - gray out other folders"""
@@ -106,14 +99,14 @@ class ApplicationDemo(QWidget):
         if app_name == "User Management":
             app_widget = UserManagementAppWidget()
         elif app_name == "Settings":
-            app_widget = SettingsAppWidget(controller = self.controller)
+            app_widget = SettingsAppWidget(controller=self.controller)
             # app_widget = AppWidget(app_name)
         elif app_name == "Create Workpiece Options":
             app_widget = CreateWorkpieceOptionsAppWidget(controller=self.controller)
             app_widget.create_workpiece_camera_selected.connect(self.create_workpiece_via_camera_selected)
             app_widget.create_workpiece_dxf_selected.connect(self.create_workpiece_via_dxf_selected)
         elif app_name == "Contour Editor":
-            app_widget = ContourEditorAppWidget(parent = self,controller=self.controller)
+            app_widget = ContourEditorAppWidget(parent=self, controller=self.controller)
             # app_widget = AppWidget(app_name)
         elif app_name == "Start":
             app_widget = DashboardAppWidget(controller=self.controller)
@@ -121,17 +114,18 @@ class ApplicationDemo(QWidget):
             app_widget.LOGOUT_REQUEST.connect(self.onLogout)
         elif app_name == "Gallery":
             app_widget = GalleryAppWidget(controller=self.controller)
-        elif app_name == "Calibrate":
-            pass
-            # from pl_gui.calibration.CalibrationAppWidget import CalibrationAppWidget
-            # app_widget = CalibrationAppWidget(controller=self.controller)
+        elif app_name == "Calibration":
+            print("Demo: Showing Service Calibration App Widget")
+            from pl_gui.main_application.appWidgets.CalibrationAppWidget import ServiceCalibrationAppWidget
+            app_widget = ServiceCalibrationAppWidget(parent=self,controller=self.controller)
         elif app_name == "DXF Browser":
             from pl_gui.gallery.DxfThumbnailLoader import DXFThumbnailLoader
             from pl_gui.settings.Paths import DXF_DIRECTORY
             loader = DXFThumbnailLoader(DXF_DIRECTORY)
             thumbnails = loader.run()
 
-            app_widget = GalleryAppWidget(controller=self.controller,onApplyCallback=self.onDxfBrowserSubmit,thumbnails= thumbnails)
+            app_widget = GalleryAppWidget(controller=self.controller, onApplyCallback=self.onDxfBrowserSubmit,
+                                          thumbnails=thumbnails)
         else:
             app_widget = AppWidget(app_name)
 
@@ -397,13 +391,10 @@ class ApplicationDemo(QWidget):
         createWorkpieceManager = CreateWorkpieceManager(self.contour_editor, self.controller)
         createWorkpieceManager.via_camera()
 
-
-
     def create_workpiece_via_dxf_selected(self):
         """Handle DXF selection for workpiece creation"""
 
         self.show_app("DXF Browser")
-
 
     def onLogEvent(self):
         print("Log event triggered in ApplicationDemo")
@@ -471,7 +462,6 @@ class ApplicationDemo(QWidget):
         # set_callback()
         QTimer.singleShot(100, set_callback)
 
-
     def onCreateWorkpieceSubmitDxf(self, data):
         """Handle DXF workpiece form submission - mirrors camera workflow"""
         print("onCreateWorkpieceSubmitDxf called with data:", data)
@@ -493,7 +483,7 @@ class ApplicationDemo(QWidget):
 
         data[WorkpieceField.SPRAY_PATTERN.value] = sprayPatternsDict
         data[WorkpieceField.CONTOUR.value] = wp_contours_data.get('External', [])
-        data[WorkpieceField.CONTOUR_AREA.value] = 0 # PLACEHOLDER NEED TO CALCULATE AREA
+        data[WorkpieceField.CONTOUR_AREA.value] = 0  # PLACEHOLDER NEED TO CALCULATE AREA
         # Navigate back to main content like camera workflow
 
         # Save the workpiece using DXF endpoint
@@ -522,6 +512,7 @@ class ApplicationDemo(QWidget):
 
         self.onLogEvent()
         # Optionally, you can close the application or redirect to a login screen
+
 
 class MockController():
     def init(self):
@@ -555,11 +546,10 @@ class MockController():
         robotSettings = RobotSettings()
         return cameraSettings, robotSettings
 
+    def saveWorkpieceFromDXF(self, data):
+        print("Saving wp from dxf: ", data)
 
-    def saveWorkpieceFromDXF(self,data):
-        print("Saving wp from dxf: ",data)
-
-    def handleLogin(self,user,password):
+    def handleLogin(self, user, password):
         csv_file_path = os.path.join(os.path.dirname(__file__), "API/shared/user/users.csv")
         user_fields = [UserField.ID, UserField.FIRST_NAME, UserField.LAST_NAME, UserField.PASSWORD, UserField.ROLE]
         repo = CSVUsersRepository(csv_file_path, user_fields, User)
@@ -567,8 +557,7 @@ class MockController():
 
         user = service.getUserById(2)
         SessionManager.login(user)
-        return  "1"
-
+        return "1"
 
 
 def main():

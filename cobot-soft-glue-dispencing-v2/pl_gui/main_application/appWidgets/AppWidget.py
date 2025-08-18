@@ -15,9 +15,6 @@ class AppWidget(QWidget):
     def setup_ui(self):
         """Setup the basic app UI with a back button"""
         layout = QVBoxLayout(self)
-
-
-
         # App content area
         content = QLabel(
             f"This is the {self.app_name} application.\n\nClick the Back button or press ESC to return to the main menu.")

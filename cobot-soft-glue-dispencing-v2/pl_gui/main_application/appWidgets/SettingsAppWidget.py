@@ -6,7 +6,7 @@ from pl_gui.main_application.helpers.Endpoints import GET_SETTINGS, UPDATE_CAMER
 class SettingsAppWidget(AppWidget):
     """Specialized widget for User Management application"""
 
-    def __init__(self, parent=None,controller=None):
+    def __init__(self, parent=None, controller=None):
         self.controller = controller
         super().__init__("Settings", parent)
 
@@ -43,11 +43,10 @@ class SettingsAppWidget(AppWidget):
                     print("Raw mode off requested SettingsAppWidget")
                     self.controller.handle(RAW_MODE_OFF)
 
-
             self.content_widget = SettingsContent(updateSettingsCallback=updateSettingsCallback)
             self.content_widget.update_camera_feed_requested.connect(lambda: updateCameraFeedCallback())
-            self.content_widget.raw_mode_requested.connect(lambda state : onRawModeRequested(state))
-
+            self.content_widget.raw_mode_requested.connect(lambda state: onRawModeRequested(state))
+            print("Controller:", self.controller)
             cameraSettings, robotSettings, glueSettings = self.controller.handle(GET_SETTINGS)
             self.content_widget.updateCameraSettings(cameraSettings)
             self.content_widget.updateRobotSettings(robotSettings)

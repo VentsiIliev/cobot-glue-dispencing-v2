@@ -118,7 +118,7 @@ class Controller:
 
         cameraSettingsResponseDict = self.requestSender.sendRequest(cameraSettingsRequest)
         cameraSettingsResponse = Response.from_dict(cameraSettingsResponseDict)
-
+        print(" get Camera settings response:", cameraSettingsResponse)
         glueSettingsResponseDict = self.requestSender.sendRequest(glueSettingsRequest)
         glueSettingsResponse = Response.from_dict(glueSettingsResponseDict)
 

@@ -16,7 +16,7 @@ class PlGui:
 
     def __init__(self, controller=None):
         self.controller = controller
-        self.requires_login = True
+        self.requires_login = False
 
     def start(self):
         app = QApplication(sys.argv)

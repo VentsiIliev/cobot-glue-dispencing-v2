@@ -44,13 +44,12 @@ class CalibrationServiceTabLayout(BaseSettingsTabLayout, QVBoxLayout):
     capture_calibration_image_requested = QtCore.pyqtSignal()
     show_debug_view_requested = QtCore.pyqtSignal(bool)
 
-    def __init__(self, parent_widget, calibration_service=None):
+    def __init__(self, parent_widget=None):
         BaseSettingsTabLayout.__init__(self, parent_widget)
         QVBoxLayout.__init__(self)
         print(f"Initializing {self.__class__.__name__} with parent widget: {parent_widget}")
 
         self.parent_widget = parent_widget
-        self.calibration_service = calibration_service
         self.debug_mode_active = False
         self.calibration_in_progress = False
 
