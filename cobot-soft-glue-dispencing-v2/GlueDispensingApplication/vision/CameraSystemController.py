@@ -53,7 +53,18 @@ class CameraSystemController():
             return self.stopContourDetection()
         elif command == "START_CONTOUR_DETECTION":
             return self.startContourDetection()
+        elif command == "captureCalibrationImage":
+            return  self.captureCalibrationImage()
+        elif command == "testCalibration":
+            return self.cameraService.testCalibration()
 
+
+
+    def captureCalibrationImage(self):
+        result,message =  self.cameraService.captureCalibrationImage()
+        if not result:
+            return Response(Constants.RESPONSE_STATUS_ERROR, message=message).to_dict()
+        return Response(Constants.RESPONSE_STATUS_SUCCESS, message=message).to_dict()
     def updateCameraSettings(self, settings: dict):
         """
           Updates the camera settings with the provided configuration.

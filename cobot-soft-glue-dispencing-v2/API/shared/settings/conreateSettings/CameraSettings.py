@@ -17,6 +17,8 @@ class CameraSettings(Settings):
         self.set_value(CameraSettingKey.THRESHOLD.value, 100)
         self.set_value(CameraSettingKey.EPSILON.value, 0.004)
         self.set_value(CameraSettingKey.CONTOUR_DETECTION.value, True)
+        self.set_value(CameraSettingKey.MIN_CONTOUR_AREA.value, 1000)
+        self.set_value(CameraSettingKey.MAX_CONTOUR_AREA.value, 10000000)
         self.set_value(CameraSettingKey.DRAW_CONTOURS.value, True)
 
         # Preprocessing defaults
@@ -82,6 +84,10 @@ class CameraSettings(Settings):
                 self.set_threshold(settings[CameraSettingKey.THRESHOLD.value])
             if CameraSettingKey.EPSILON.value in settings:
                 self.set_epsilon(settings[CameraSettingKey.EPSILON.value])
+            if CameraSettingKey.MIN_CONTOUR_AREA.value in settings:
+                self.set_min_contour_area(settings[CameraSettingKey.MIN_CONTOUR_AREA.value])
+            if CameraSettingKey.MAX_CONTOUR_AREA.value in settings:
+                self.set_max_contour_area(settings[CameraSettingKey.MAX_CONTOUR_AREA.value])
             if CameraSettingKey.CONTOUR_DETECTION.value in settings:
                 self.set_contour_detection(settings[CameraSettingKey.CONTOUR_DETECTION.value])
             if CameraSettingKey.DRAW_CONTOURS.value in settings:
@@ -244,6 +250,8 @@ class CameraSettings(Settings):
         # Contour detection (flat in root)
         nested_data[CameraSettingKey.THRESHOLD.value] = self.get_value(CameraSettingKey.THRESHOLD.value)
         nested_data[CameraSettingKey.EPSILON.value] = self.get_value(CameraSettingKey.EPSILON.value)
+        nested_data[CameraSettingKey.MIN_CONTOUR_AREA.value] = self.get_value(CameraSettingKey.MIN_CONTOUR_AREA.value)
+        nested_data[CameraSettingKey.MAX_CONTOUR_AREA.value] = self.get_value(CameraSettingKey.MAX_CONTOUR_AREA.value)
         nested_data[CameraSettingKey.CONTOUR_DETECTION.value] = self.get_value(CameraSettingKey.CONTOUR_DETECTION.value)
         nested_data[CameraSettingKey.DRAW_CONTOURS.value] = self.get_value(CameraSettingKey.DRAW_CONTOURS.value)
 
@@ -344,6 +352,19 @@ class CameraSettings(Settings):
     def set_epsilon(self, epsilon):
         """Set the epsilon value."""
         self.set_value(CameraSettingKey.EPSILON.value, epsilon)
+
+    def get_min_contour_area(self):
+        return self.get_value(CameraSettingKey.MIN_CONTOUR_AREA.value)
+
+    def set_min_contour_area(self, minContourArea):
+        self.set_value(CameraSettingKey.MIN_CONTOUR_AREA.value, minContourArea)
+
+    def get_max_contour_area(self):
+        """Get the maximum contour area."""
+        return self.get_value(CameraSettingKey.MAX_CONTOUR_AREA.value)
+
+    def set_max_contour_area(self, maxContourArea):
+        self.set_value(CameraSettingKey.MAX_CONTOUR_AREA.value, maxContourArea)
 
     def get_contour_detection(self):
         """Get the contour detection status."""
@@ -588,6 +609,8 @@ class CameraSettings(Settings):
         print("\n=== CONTOUR DETECTION ===")
         print(f"Threshold: {self.get_threshold()}")
         print(f"Epsilon: {self.get_epsilon()}")
+        print(f"Min Contour Area: {self.get_min_contour_area()}")
+        print(f"Max Contour Area: {self.get_max_contour_area()}")
         print(f"Contour Detection: {self.get_contour_detection()}")
         print(f"Draw Contours: {self.get_draw_contours()}")
 
@@ -624,6 +647,8 @@ class CameraSettings(Settings):
             f"  Skip Frames: {self.get_skip_frames()}\n"
             f"  Threshold: {self.get_threshold()}\n"
             f"  Epsilon: {self.get_epsilon()}\n"
+            f"  Min Contour Area: {self.get_min_contour_area()}\n"
+            f"  Max Contour Area: {self.get_max_contour_area()}\n"
             f"  Contour Detection: {self.get_contour_detection()}\n"
             f"  Draw Contours: {self.get_draw_contours()}\n"
             f"  Gaussian Blur: {self.get_gaussian_blur()}\n"

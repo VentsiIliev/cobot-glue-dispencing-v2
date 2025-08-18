@@ -33,7 +33,12 @@ class Controller:
             START: self.handleStart,
             STOP: self.handleStop,
             CALIBRATE: self.handleCalibrate,
+            CAPTURE_CALIBRATION_IMAGE: self.handleCaptureCalibrationImage,
+            CALIBRATE_CAMERA: self.handleCalibrateCamera,
+            CALIBRATE_ROBOT: self.handleCalibrateRobot,
+            TEST_CALIBRATION: self.handleTestCalibration,
             HOME_ROBOT: self.homeRobot,
+            GO_TO_CALIBRATION_POS:self.handleMoveToCalibrationPos,
             JOG_ROBOT: self.handleJog,
             SAVE_WORKPIECE: self.saveWorkpiece,
             SAVE_WORKPIECE_DXF: self.saveWorkpieceFromDXF,
@@ -51,15 +56,16 @@ class Controller:
             "executeFromGallery": self.handleExecuteFromGallery
         }
 
+
+
     def handleRawModeOn(self):
         print("Enabling raw mode")
         request = Constants.CAMERA_ACTION_RAW_MODE_ON
         response = self.requestSender.sendRequest(request)
         response = Response.from_dict(response)
         if response.status == Constants.RESPONSE_STATUS_ERROR:
-            FeedbackProvider.showMessage(response.message)
-        else:
-            FeedbackProvider.showMessage("Raw mode enabled")
+            print("Error enabling raw mode:", response.message)
+
         return response.status
 
     def handleRawModeOff(self):
@@ -67,10 +73,10 @@ class Controller:
         response = self.requestSender.sendRequest(request)
         response = Response.from_dict(response)
         if response.status == Constants.RESPONSE_STATUS_ERROR:
-            FeedbackProvider.showMessage(response.message)
-        else:
-            FeedbackProvider.showMessage("Raw mode disabled")
+            print("Error disabling raw mode:", response.message)
+
         return response.status
+
     def handleExecuteFromGallery(self,workpiece):
         self.requestSender.sendRequest("handleExecuteFromGallery",workpiece)
 
@@ -156,42 +162,70 @@ class Controller:
 
         return True, response.message
 
-    def handleCalibrate(self):
-        from PyQt6.QtWidgets import QMessageBox
+    def handleTestCalibration(self):
+        request = Constants.CAMERA_ACTION_TEST_CALIBRATION
+        self.requestSender.sendRequest(request)
 
+    def handleCalibrateRobot(self):
+        request = Constants.ROBOT_CALIBRATE
+        response = self.requestSender.sendRequest(request)
+        response = Response.from_dict(response)
+        print("Robot calibration response:", response)
+        self.logger.debug(f"{self.logTag}] Calibrate robot response: {response}")
+        if response.status == Constants.RESPONSE_STATUS_ERROR:
+            request = Constants.CAMERA_ACTION_RAW_MODE_OFF
+            response = self.requestSender.sendRequest(request)
+            response = Response.from_dict(response)
+            FeedbackProvider.showMessage(response.message)
+            return False, response.message
+
+        return True, response.message
+
+
+    def handleCalibrateCamera(self):
         """ MOVE ROBOT TO CALIBRATION POSITION"""
+        print("Calibrating camera")
         request = Constants.ROBOT_MOVE_TO_CALIB_POS
-
         response = self.requestSender.sendRequest(request)
         response = Response.from_dict(response)
         if response.status != Constants.RESPONSE_STATUS_SUCCESS:
             self.logger.debug(f"{self.logTag}] [Method: handleCalibrate] Error moving to calib pos")
 
-        """ s """
         request = Constants.CAMERA_ACTION_RAW_MODE_ON
         response = self.requestSender.sendRequest(request)
         response = Response.from_dict(response)
 
         FeedbackProvider.showPlaceCalibrationPattern()
 
-        # SEND CAMERA CALIBRATION REQUEST
-
         request = Constants.CAMERA_ACTION_CALIBRATE
         response = self.requestSender.sendRequest(request)
         response = Response.from_dict(response)
 
         if response.status == Constants.RESPONSE_STATUS_ERROR:
-
+            FeedbackProvider.showMessage(response.message)
             request = Constants.CAMERA_ACTION_RAW_MODE_OFF
             response = self.requestSender.sendRequest(request)
             response = Response.from_dict(response)
-
-            FeedbackProvider.showMessage(response.message)
-
-            self.requestSender.sendRequest(Constants.ROBOT_MOVE_TO_HOME_POS)
-            return False,response.message
+            return False, response.message
 
         FeedbackProvider.showMessage("Camera Calibration Success\nMove the chessboard")
+
+    def handleCaptureCalibrationImage(self):
+        request = Constants.CAMERA_ACTION_CAPTURE_CALIBRATION_IMAGE
+        response = self.requestSender.sendRequest(request)
+        response = Response.from_dict(response)
+
+        if response.status == Constants.RESPONSE_STATUS_ERROR:
+            FeedbackProvider.showMessage(response.message)
+            return False, response.message
+
+        FeedbackProvider.showMessage("Calibration image captured successfully")
+        return True, "Calibration image captured successfully"
+
+    def handleCalibrate(self):
+
+        self.handleCalibrateCamera()
+        self.handleCalibrateRobot()
 
         # SEND ROBOT CALIBRATION REQUEST
 
@@ -305,6 +339,11 @@ class Controller:
         response = self.requestSender.sendRequest(request)
         response = Response.from_dict(response)
         return response.status
+
+    def handleMoveToCalibrationPos(self):
+        request = Constants.ROBOT_MOVE_TO_CALIB_POS
+        self.requestSender.sendRequest(request)
+
 
     def homeRobot(self,asyncParam=True):
         request = Constants.ROBOT_MOVE_TO_HOME_POS

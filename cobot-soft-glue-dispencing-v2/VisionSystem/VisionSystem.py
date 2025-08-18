@@ -3,6 +3,7 @@ import os
 import time
 import numpy as np
 
+from API.MessageBroker import MessageBroker
 from VisionSystem.calibration.cameraCalibration.CameraCalibrationService import CameraCalibrationService
 from src.plvision.PLVision import Contouring
 from src.plvision.PLVision import ImageProcessing
@@ -30,7 +31,9 @@ CONFIG_FILE_PATH = os.path.join(os.path.dirname(__file__), 'config.json')
 class VisionSystem:
     def __init__(self, configFilePath=None, camera_settings=None):
         self.logger = logging.getLogger(self.__class__.__name__)
-
+        self.calibrationImages = []
+        self.broker = MessageBroker()
+        self.calibrationImageCapturedTopic = "vision-system/calibration_image_captured"
         # Initialize camera settings
         if camera_settings is not None:
             self.camera_settings = camera_settings
@@ -49,32 +52,32 @@ class VisionSystem:
             self.camera_settings.get_camera_height()
         )
 
-        # Handle camera availability
-        if not self.camera.cap.isOpened():
-            if platform.system().lower() == "linux":
-                availableIds = self.find_first_available_camera()
-            else:
-                # On Windows, try indices 0-5
-                availableIds = []
-                for i in range(6):
-                    cap = cv2.VideoCapture(i)
-                    if cap.isOpened():
-                        cap.release()
-                        availableIds.append(i)
-
-            if len(availableIds) == 0:
-                print("NO CAMERAS FOUND")
-            else:
-                for id in availableIds:
-                    self.camera = Camera(
-                        id,
-                        self.camera_settings.get_camera_width(),
-                        self.camera_settings.get_camera_height()
-                    )
-                    if self.camera.cap.isOpened():
-                        print("Camera found : ", id)
-                        self.camera_settings.set_camera_index(id)
-                        break
+        # # Handle camera availability
+        # if not self.camera.cap.isOpened():
+        #     if platform.system().lower() == "linux":
+        #         availableIds = self.find_first_available_camera()
+        #     else:
+        #         # On Windows, try indices 0-5
+        #         availableIds = []
+        #         for i in range(6):
+        #             cap = cv2.VideoCapture(i)
+        #             if cap.isOpened():
+        #                 cap.release()
+        #                 availableIds.append(i)
+        #
+        #     if len(availableIds) == 0:
+        #         print("NO CAMERAS FOUND")
+        #     else:
+        #         for id in availableIds:
+        #             self.camera = Camera(
+        #                 id,
+        #                 self.camera_settings.get_camera_width(),
+        #                 self.camera_settings.get_camera_height()
+        #             )
+        #             if self.camera.cap.isOpened():
+        #                 print("Camera found : ", id)
+        #                 self.camera_settings.set_camera_index(id)
+        #                 break
 
         # Load camera calibration data
         self.isSystemCalibrated = False
@@ -113,6 +116,15 @@ class VisionSystem:
         # Initialize skip frames counter
         self.current_skip_frames = 0
 
+    def captureCalibrationImage(self):
+        if self.rawImage is None:
+            self.logger.warning("No rawImage image captured for calibration")
+            return False, "No rawImage image captured for calibration"
+
+        self.calibrationImages.append(self.rawImage)
+        self.broker.publish(self.calibrationImageCapturedTopic, self.calibrationImages)
+        return True, "Calibration image captured successfully"
+
     def run(self):
         self.image = self.camera.capture()
 
@@ -135,7 +147,6 @@ class VisionSystem:
             self.image = adjusted_frame
 
         if self.rawMode:
-            print("Raw mode")
             return None, self.rawImage, None
         if self.camera_settings.get_contour_detection():
             if self.isSystemCalibrated:
@@ -147,8 +158,8 @@ class VisionSystem:
 
             contours = self.findContours(self.correctedImage)
             approxContours = self.approxContours(contours)
-            filteredContours = [cnt for cnt in approxContours if cv2.contourArea(cnt) > 1000]
-
+            filteredContours = [cnt for cnt in approxContours if cv2.contourArea(cnt) > self.camera_settings.get_min_contour_area()]
+            filteredContours = [cnt for cnt in filteredContours if cv2.contourArea(cnt) < self.camera_settings.get_max_contour_area()]
             # Cache centroids once
             contours_with_centroids = []
             for cnt in filteredContours:
@@ -206,11 +217,11 @@ class VisionSystem:
             self.camera_settings.get_camera_width(),
             self.camera_settings.get_camera_height()
         )
-        imageParam = cv2.warpPerspective(
-            imageParam,
-            self.perspectiveMatrix,
-            (self.camera_settings.get_camera_width(), self.camera_settings.get_camera_height())
-        )
+        # imageParam = cv2.warpPerspective(
+        #     imageParam,
+        #     self.perspectiveMatrix,
+        #     (self.camera_settings.get_camera_width(), self.camera_settings.get_camera_height())
+        # )
         return imageParam
 
     def findContours(self, imageParam):
@@ -286,6 +297,9 @@ class VisionSystem:
             skipFrames=self.camera_settings.get_calibration_skip_frames()
         )
 
+
+        cameraCalibrationService.calibrationImages = self.calibrationImages
+
         result, calibrationData, perspectiveMatrix, message = cameraCalibrationService.run(self.rawImage)
         if result:
             self.cameraMatrix = calibrationData[1]
@@ -347,7 +361,7 @@ class VisionSystem:
         except Exception as e:
             return False, f"Error updating settings: {str(e)}"
 
-    def detectArucoMarkers(self, flip=None, image=None):
+    def detectArucoMarkers(self, flip=False, image=None):
         """
         Detect ArUco markers in the image.
         """
@@ -369,7 +383,7 @@ class VisionSystem:
                 image = self.correctedImage
                 skip -= 1
 
-        if flip:
+        if flip is True:
             image = cv2.flip(image, 1)
 
         # Get ArUco dictionary from settings
@@ -432,6 +446,56 @@ class VisionSystem:
         Get the current camera settings object.
         """
         return self.camera_settings
+
+    def testCalibration(self):
+        print("In testCalibration method")
+        # find the required aruco markers
+        required_ids = set(range(9))
+        try:
+            arucoCorners, arucoIds, image = self.detectArucoMarkers(flip=False, image=self.correctedImage)
+        except:
+            print("❌ Error during ArUco marker detection")
+            return False, None, None
+
+        if arucoIds is not None:
+            found_ids = np.array(arucoIds).flatten().tolist()
+            print("🆔 Detected marker IDs:", found_ids)
+            cv2.aruco.drawDetectedMarkers(image, arucoCorners, np.array(arucoIds, dtype=np.int32))
+
+            if len(found_ids) >= 9:
+                id_to_corner = {int(id_): corner for id_, corner in zip(arucoIds.flatten(), arucoCorners)}
+
+                if required_ids.issubset(id_to_corner.keys()):
+                    # Extract top-left corners in order of IDs 0 through 8
+                    ordered_camera_points = [id_to_corner[i][0] for i in sorted(required_ids)]
+                    print("✅ All required markers found: ", ordered_camera_points)
+                    print("📍 Top-left corners of required markers:")
+
+                    # Transform the points to robot coordinates
+                    points = [id_to_corner[i][0] for i in sorted(required_ids)]  # Use ordered points
+                    src_pts = np.array(points, dtype=np.float32)
+                    src_pts = src_pts.reshape(-1, 1, 2)  # (N, 1, 2) format for perspectiveTransform
+
+                    # Transform to robot coordinate space
+                    transformed_pts = cv2.perspectiveTransform(src_pts, self.cameraToRobotMatrix)
+                    transformed_pts = transformed_pts.reshape(-1, 2)
+
+                    print("\n📍 Transformed Robot Coordinates:")
+                    for i, pt in enumerate(transformed_pts):
+                        print(f"Marker {i}: X = {pt[0]:.2f}, Y = {pt[1]:.2f}")
+
+                    # Continue with the rest of your calibration logic here...
+                    return True, ordered_camera_points, image
+                else:
+                    print("❌ Not all required markers found")
+                    return False, None, image
+            else:
+                print("❌ Not enough markers detected")
+                return False, None, image
+        else:
+            print("❌ No markers detected")
+            return False, None, None
+
 
     """PRIVATE METHODS SECTION"""
 

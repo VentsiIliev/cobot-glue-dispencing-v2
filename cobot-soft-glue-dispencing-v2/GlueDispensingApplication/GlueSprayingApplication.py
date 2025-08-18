@@ -5,6 +5,7 @@ import traceback
 import time
 
 from API import Constants
+from API.shared.Contour import Contour
 from API.shared.settings.conreateSettings.enums.GlueSettingKey import GlueSettingKey
 from API.shared.settings.conreateSettings.enums.RobotSettingKey import RobotSettingKey
 
@@ -86,100 +87,12 @@ class GlueSprayingApplication:
             self.robotService._waitForRobotToReachPosition(self.robotService.calibrationPosition, 2, 0.1)
             time.sleep(2)
 
-            result, newContours = self.visionService.processContours()
-            if not result:
+            newContours = self.visionService.contours
+
+
+            if newContours is None:
                 return False, "No contours found"
-    #         newContours = [np.array([
-    # [1149, 72], [1145, 72], [1144, 73], [1137, 73], [1136, 74],
-    # [1130, 74], [1129, 75], [1124, 75], [1123, 76], [1119, 76],
-    # [1118, 77], [1112, 77], [1111, 78], [1105, 78], [1104, 79],
-    # [1099, 79], [1098, 80], [1091, 80], [1090, 81], [1083, 81],
-    # [1082, 82], [1076, 82], [1075, 83], [1070, 83], [1069, 84],
-    # [1063, 84], [1062, 85], [1056, 85], [1055, 86], [1049, 86],
-    # [1048, 87], [1042, 87], [1041, 88], [1036, 88], [1035, 89],
-    # [1030, 89], [1029, 90], [1023, 90], [1022, 91], [1016, 91],
-    # [1015, 92], [1009, 92], [1008, 93], [1001, 93], [1000, 94],
-    # [994, 94], [993, 95], [988, 95], [987, 96], [981, 96],
-    # [980, 97], [975, 97], [974, 98], [967, 98], [966, 99],
-    # [959, 99], [958, 100], [953, 100], [952, 101], [946, 101],
-    # [945, 102], [939, 102], [938, 103], [934, 103], [933, 104],
-    # [926, 104], [925, 105], [919, 105], [918, 106], [909, 106],
-    # [908, 107], [902, 107], [901, 108], [896, 108], [895, 109],
-    # [889, 109], [888, 110], [881, 110], [880, 111], [875, 111],
-    # [874, 112], [868, 112], [867, 113], [863, 113], [862, 114],
-    # [856, 114], [855, 115], [855, 119], [856, 120], [856, 125],
-    # [857, 126], [857, 130], [858, 131], [858, 136], [859, 137],
-    # [859, 141], [860, 142], [860, 146], [861, 147], [861, 152],
-    # [862, 153], [862, 157], [863, 158], [863, 162], [864, 163],
-    # [864, 167], [865, 168], [865, 172], [866, 173], [866, 178],
-    # [867, 179], [867, 183], [868, 184], [868, 188], [869, 189],
-    # [869, 194], [870, 195], [870, 199], [871, 200], [871, 204],
-    # [872, 205], [872, 210], [873, 211], [873, 215], [874, 216],
-    # [874, 220], [875, 221], [875, 225], [876, 226], [876, 231],
-    # [877, 232], [877, 236], [878, 237], [878, 241], [879, 242],
-    # [879, 246], [880, 247], [880, 252], [881, 253], [881, 257],
-    # [882, 258], [882, 262], [883, 263], [883, 268], [884, 269],
-    # [884, 272], [885, 273], [885, 278], [886, 279], [886, 283],
-    # [887, 284], [887, 288], [888, 289], [888, 293], [889, 294],
-    # [889, 299], [890, 300], [890, 304], [891, 305], [891, 309],
-    # [892, 310], [892, 314], [893, 315], [893, 320], [894, 321],
-    # [894, 324], [895, 325], [895, 329], [896, 330], [896, 334],
-    # [897, 335], [897, 340], [898, 341], [898, 345], [899, 346],
-    # [899, 350], [900, 351], [900, 355], [901, 356], [901, 360],
-    # [902, 361], [902, 365], [903, 366], [903, 370], [904, 371],
-    # [904, 375], [905, 376], [905, 380], [906, 381], [906, 385],
-    # [907, 386], [907, 390], [908, 391], [908, 395], [909, 396],
-    # [909, 400], [910, 401], [910, 405], [911, 406], [911, 410],
-    # [912, 411], [912, 415], [913, 416], [913, 420], [914, 421],
-    # [914, 425], [915, 426], [915, 430], [916, 431], [916, 435],
-    # [917, 436], [917, 440], [918, 441], [918, 445], [919, 446],
-    # [919, 449], [920, 450], [920, 454], [921, 455], [921, 459],
-    # [922, 460], [922, 463], [923, 464], [927, 464], [928, 463],
-    # [935, 463], [936, 462], [942, 462], [943, 461], [949, 461],
-    # [950, 460], [957, 460], [958, 459], [965, 459], [966, 458],
-    # [972, 458], [973, 457], [978, 457], [979, 456], [985, 456],
-    # [986, 455], [993, 455], [994, 454], [1001, 454], [1002, 453],
-    # [1007, 453], [1008, 452], [1014, 452], [1015, 451], [1021, 451],
-    # [1022, 450], [1028, 450], [1029, 449], [1036, 449], [1037, 448],
-    # [1043, 448], [1044, 447], [1050, 447], [1051, 446], [1058, 446],
-    # [1059, 445], [1066, 445], [1067, 444], [1072, 444], [1073, 443],
-    # [1079, 443], [1080, 442], [1086, 442], [1087, 441], [1094, 441],
-    # [1095, 440], [1102, 440], [1103, 439], [1109, 439], [1110, 438],
-    # [1117, 438], [1118, 437], [1123, 437], [1124, 436], [1131, 436],
-    # [1132, 435], [1138, 435], [1139, 434], [1145, 434], [1146, 433],
-    # [1152, 433], [1153, 432], [1159, 432], [1160, 431], [1167, 431],
-    # [1168, 430], [1174, 430], [1175, 429], [1181, 429], [1182, 428],
-    # [1188, 428], [1189, 427], [1196, 427], [1197, 426], [1204, 426],
-    # [1205, 425], [1210, 425], [1211, 424], [1216, 424], [1217, 423],
-    # [1218, 423], [1217, 422], [1217, 418], [1216, 417], [1216, 413],
-    # [1215, 412], [1215, 408], [1214, 407], [1214, 403], [1213, 402],
-    # [1213, 397], [1212, 396], [1212, 392], [1211, 391], [1211, 387],
-    # [1210, 386], [1210, 382], [1209, 381], [1209, 377], [1208, 376],
-    # [1208, 372], [1207, 371], [1207, 367], [1206, 366], [1206, 362],
-    # [1205, 361], [1205, 357], [1204, 356], [1204, 352], [1203, 351],
-    # [1203, 348], [1202, 347], [1202, 343], [1201, 342], [1201, 337],
-    # [1200, 336], [1200, 333], [1199, 332], [1199, 328], [1198, 327],
-    # [1198, 322], [1197, 321], [1197, 317], [1196, 316], [1196, 312],
-    # [1195, 311], [1195, 307], [1194, 306], [1194, 301], [1193, 300],
-    # [1193, 296], [1192, 295], [1192, 292], [1191, 291], [1191, 286],
-    # [1190, 285], [1190, 281], [1189, 280], [1189, 276], [1188, 275],
-    # [1188, 271], [1187, 270], [1187, 266], [1186, 265], [1186, 261],
-    # [1185, 260], [1185, 256], [1184, 255], [1184, 251], [1183, 250],
-    # [1183, 245], [1182, 244], [1182, 240], [1181, 239], [1181, 235],
-    # [1180, 234], [1180, 229], [1179, 228], [1179, 224], [1178, 223],
-    # [1178, 219], [1177, 218], [1177, 214], [1176, 213], [1176, 209],
-    # [1175, 208], [1175, 203], [1174, 202], [1174, 199], [1173, 198],
-    # [1173, 193], [1172, 192], [1172, 188], [1171, 187], [1171, 183],
-    # [1170, 182], [1170, 178], [1169, 177], [1169, 173], [1168, 172],
-    # [1168, 167], [1167, 166], [1167, 162], [1166, 161], [1166, 156],
-    # [1165, 155], [1165, 151], [1164, 150], [1164, 146], [1163, 145],
-    # [1163, 141], [1162, 140], [1162, 136], [1161, 135], [1161, 130],
-    # [1160, 129], [1160, 125], [1159, 124], [1159, 120], [1158, 119],
-    # [1158, 114], [1157, 113], [1157, 108], [1156, 107], [1156, 104],
-    # [1155, 103], [1155, 99], [1154, 98], [1154, 94], [1153, 93],
-    # [1153, 89], [1152, 88], [1152, 84], [1151, 83], [1151, 79],
-    # [1150, 78], [1150, 74], [1149, 73]
-# ], dtype=np.float32)]
+
             matches_data, noMatches, _ = CompareContours.findMatchingWorkpieces(workpieces, newContours)
             print("Matches:", matches_data)
             print("No Matches:", noMatches)
@@ -289,7 +202,7 @@ class GlueSprayingApplication:
             # ✅ Send all paths to robot
             if finalPaths:
                 broker = MessageBroker()
-                frame = self.visionService.getLatestFrame()
+                frame = self.visionService.captureImage()
                 # resize to (image_width=640, image_height=360)
                 frame = cv2.resize(frame, (640, 360))
                 broker.publish("robot/trajectory/updateImage", {"image": frame})
@@ -299,8 +212,8 @@ class GlueSprayingApplication:
 
         else:
             # ✅ Direct contour tracing without matching
-            result, newContours = self.visionService.processContours()
-            if not result:
+            newContours = self.visionService.contours
+            if newContours is None:
                 return False, "No contours found"
 
             # Transform contours to robot coordinates and convert to proper format
@@ -581,42 +494,28 @@ class GlueSprayingApplication:
 
         # Store original contours for later use
         originalContours = self.visionService.contours
-        # write the points into debugCreateWp.txt
-        print("originalcnt: ",originalContours)
+        print("Original Contours: ", originalContours)
+        externalContour = []
+        if originalContours is not None and len(originalContours) > 0:
+            contour = originalContours[0]
+            # contour = originalContours
+            # contour = originalContours.tolist()
 
-        # Process contours from vision service
-        result = False
-        contours = None
-        try:
-            ret, contours = self.visionService.processContours()
-            # not append contours to the file
-            result = ret
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-
-        # Process contours if valid, otherwise set defaults
-        if result and contours is not None and len(contours) > 0 and not isinstance(contours, str):
-            contour = contours[0]
-
-            # Ensure contour is a list before appending, then convert to numpy array
-            if isinstance(contour, np.ndarray):
-                contour = contour.tolist()
-
-            contour.append(contour[0])  # Close the contour
-            contour = np.array(contour, dtype=np.float32)
-            centroid = Contouring.calculateCentroid(contour)
+            # contour.append(contour[0])  # Close the contour
+            # contour = np.array(contour, dtype=np.float32)
+            # centroid = Contouring.calculateCentroid(contour)
             contourArea = cv2.contourArea(contour)
+            externalContour = contour
         else:
             # No contours found - set defaults and prepare for manual editing
             originalContours = []
             contour = []
             centroid = [0, 0]
             contourArea = 0
+            print("No contours found, setting defaults for manual editing")
 
         # Capture image for workpiece creation
         createWpImage = self.visionService.captureImage()
-        print("createWpImage shape: ", createWpImage.shape)
 
         """
         HEIGHT MEASUREMENT SECTION (DISABLED)
@@ -665,22 +564,22 @@ class GlueSprayingApplication:
         estimatedHeight = 4  # Default height value
 
         # Set message based on whether contours were found automatically
-        if result and contours is not None and len(contours) > 0:
+        if originalContours is not None and len(originalContours) > 0:
             message = "Workpiece created successfully"
         else:
             message = "No contours found - opening contour editor for manual setup"
 
         # Prepare return data
-        print("originalcnt sent: ", originalContours)
         data = (
             estimatedHeight,
             contourArea,
-            contour,
+            externalContour,
             scaleFactor,
             createWpImage,
             message,
             originalContours
         )
+        print("CREATE WP DEBUG: data: ", data)
 
         # Always return True to allow contour editor to open, even if no contours found
         return True, data

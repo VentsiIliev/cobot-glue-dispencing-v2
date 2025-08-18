@@ -383,6 +383,20 @@ class CameraSettingsTabLayout(BaseSettingsTabLayout, QVBoxLayout):
         self.epsilon_input = self.create_double_spinbox(0.0, 1.0, self.camera_settings.get_epsilon())
         layout.addWidget(self.epsilon_input, row, 1)
 
+        row+=1
+        label = QLabel("Min Contour Area:")
+        label.setWordWrap(True)
+        layout.addWidget(label,row,0, Qt.AlignmentFlag.AlignLeft)
+        self.min_contour_area_input = self.create_spinbox(0, 100000, self.camera_settings.get_min_contour_area())
+        layout.addWidget(self.min_contour_area_input)
+
+        row+=1
+        label = QLabel("Max Contour Area:")
+        label.setWordWrap(True)
+        layout.addWidget(label,row,0, Qt.AlignmentFlag.AlignLeft)
+        self.max_contour_area_input = self.create_spinbox(0, 10000000, self.camera_settings.get_max_contour_area())
+        layout.addWidget(self.max_contour_area_input)
+
         layout.setColumnStretch(1, 1)
         return group
 
@@ -655,6 +669,10 @@ class CameraSettingsTabLayout(BaseSettingsTabLayout, QVBoxLayout):
             lambda value: callback(CameraSettingKey.THRESHOLD.value, value, "CameraSettingsTabLayout"))
         self.epsilon_input.valueChanged.connect(
             lambda value: callback(CameraSettingKey.EPSILON.value, value, "CameraSettingsTabLayout"))
+        self.min_contour_area_input.valueChanged.connect(
+            lambda value: callback(CameraSettingKey.MIN_CONTOUR_AREA.value, value, "CameraSettingsTabLayout"))
+        self.max_contour_area_input.valueChanged.connect(
+            lambda value: callback(CameraSettingKey.MAX_CONTOUR_AREA.value, value, "CameraSettingsTabLayout"))
 
         # Preprocessing
         self.gaussian_blur_toggle.toggled.connect(
@@ -745,6 +763,8 @@ class CameraSettingsTabLayout(BaseSettingsTabLayout, QVBoxLayout):
         self.draw_contours_toggle.setChecked(camera_settings.get_draw_contours())
         self.threshold_input.setValue(camera_settings.get_threshold())
         self.epsilon_input.setValue(camera_settings.get_epsilon())
+        self.min_contour_area_input.setValue(camera_settings.get_min_contour_area())
+        self.max_contour_area_input.setValue(camera_settings.get_max_contour_area())
 
         # Preprocessing
         self.gaussian_blur_toggle.setChecked(camera_settings.get_gaussian_blur())
@@ -794,6 +814,8 @@ class CameraSettingsTabLayout(BaseSettingsTabLayout, QVBoxLayout):
             CameraSettingKey.DRAW_CONTOURS.value: self.draw_contours_toggle.isChecked(),
             CameraSettingKey.THRESHOLD.value: self.threshold_input.value(),
             CameraSettingKey.EPSILON.value: self.epsilon_input.value(),
+            CameraSettingKey.MIN_CONTOUR_AREA.value: self.min_contour_area_input.value(),
+            CameraSettingKey.MAX_CONTOUR_AREA.value: self.max_contour_area_input.value(),
 
             # Preprocessing
             CameraSettingKey.GAUSSIAN_BLUR.value: self.gaussian_blur_toggle.isChecked(),

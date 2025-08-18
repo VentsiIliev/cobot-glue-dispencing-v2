@@ -32,7 +32,7 @@ logging.basicConfig(
     format='[%(asctime)s] %(levelname)s - %(name)s - %(message)s'
 )
 # GUI RELATED IMPORTS
-proximitySensor = ProximitySensor(13)
+# proximitySensor = ProximitySensor(13)
 sensorPublisher = SensorPublisher()
 
 # sensorPublisher.registerSensor(proximitySensor)

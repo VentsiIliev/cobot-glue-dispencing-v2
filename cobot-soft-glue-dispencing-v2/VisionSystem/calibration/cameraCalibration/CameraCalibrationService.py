@@ -1,3 +1,6 @@
+import os
+from API.MessageBroker import MessageBroker
+
 import cv2
 import numpy as np
 from src.plvision.PLVision import ImageProcessing
@@ -13,12 +16,15 @@ class CameraCalibrationService:
     def __init__(self, chessboardWidth, chessboardHeight, squareSizeMM, skipFrames,onDetectionFailed=None, storagePath=None):
         if storagePath is not None:
             self.STORAGE_PATH = storagePath
+        self.calibrationImages = []
         self.chessboardWidth = chessboardWidth
         self.chessboardHeight = chessboardHeight
         self.squareSizeMM = squareSizeMM
         self.skipFrames = skipFrames
         self.onDetectionFailed = onDetectionFailed
         self.cameraCalibrator = CameraCalibrator(self.chessboardWidth, self.chessboardHeight, self.squareSizeMM)
+        self.topic = "vision-system/calibration-feedback"
+        self.messageBroker = MessageBroker()
 
     def detectArucoMarkers(self, flip=False, image=None):
         """
@@ -48,129 +54,153 @@ class CameraCalibrationService:
             print(f"❌ ArUco Detection failed: {e}")
             return None, None, image
 
-    def run(self, image, debug=False):
+    def run(self, image, debug=True):
         """
         Main calibration workflow.
         Returns (success, calibrationData, perspectiveMatrix, message)
         """
-        print("Calibration Started with image", image)
         message = ""
 
-        if debug:
-            self.__displayDebugImage(image)
-
-        imageHeight, imageWidth = image.shape[:2]
-
-        required_ids = {30, 31, 32, 33}
-        maxAttempts = 60
-
-        arucoCorners, arucoIds = None, None
-        for attempt in range(maxAttempts, 0, -1):
-            print(f"Aruco Attempt: {attempt}")
-            arucoCorners, arucoIds, _ = self.detectArucoMarkers(image=image.copy())
-            if arucoIds is not None:
-                id_to_corners = {aruco_id: arucoCorners[i][0] for i, aruco_id in enumerate(arucoIds.flatten())}
-                if required_ids.issubset(id_to_corners.keys()):
-                    break
-            else:
-                id_to_corners = {}
-        else:
-            message = "No ArUco markers found"
-            print(message)
-            return False, None, None, message
-
-        if not required_ids.issubset(id_to_corners.keys()):
-            message = "Missing aruco markers during calibration"
-            print(message)
-            print("Markers found during calibration:", arucoIds)
-            return False, None, None, message
-
-        # Assign corners based on IDs
-        topLeft = id_to_corners[30][0]
-        topRight = id_to_corners[31][0]
-        bottomRight = id_to_corners[32][0]
-        bottomLeft = id_to_corners[33][0]
-
-        src_points = np.array([topLeft, topRight, bottomRight, bottomLeft], dtype='float32')
-        dst_points = np.array([
-            [0, 0],
-            [imageWidth, 0],
-            [imageWidth, imageHeight],
-            [0, imageHeight]
-        ], dtype='float32')
-
-        perspectiveMatrix = self.getWorkAreaMatrix(dst_points, src_points)
-        croppedImage = cv2.warpPerspective(image, perspectiveMatrix, (imageWidth, imageHeight))
-
-        if not cv2.imwrite("ArucoCrop.png", croppedImage):
-            print("❌ Failed to save the image.")
-        else:
-            print("✅ Image saved successfully: ArucoCrop.png")
-
-        if debug:
-            self.__displayDebugImage(croppedImage)
-
-        result, calibrationData, imageCopy, corners = self.cameraCalibrator.performCameraCalibration(
-            croppedImage, self.STORAGE_PATH
-        )
-
-        if not result:
-            print("Calibration failed")
-            print("corners:", corners)
-            if debug:
-                cv2.imwrite("calibration_failed.png", croppedImage)
-                cv2.imshow("Calibration Failed Image", croppedImage)
-                cv2.imshow("Calibration Failed Image", imageCopy)
-                cv2.waitKey(1)
-            if corners is not None and len(corners) != self.chessboardWidth * self.chessboardHeight:
-                message = f"Corners not equal to {self.chessboardWidth * self.chessboardHeight}"
-            else:
-                message = "Corners not found"
+        if not self.calibrationImages or len(self.calibrationImages) <=0:
+            message = "No calibration images provided"
+            self.messageBroker.publish(self.topic, message)
             print(message)
             return False, [], [], message
 
-        print("Calibration successful")
-        print("corners len:", len(corners))
+        # Prepare object points
+        chessboard_size = (self.chessboardWidth, self.chessboardHeight)
+        square_size = self.squareSizeMM
+        objp = np.zeros((np.prod(chessboard_size), 3), np.float32)
+        objp[:, :2] = np.mgrid[0:chessboard_size[0], 0:chessboard_size[1]].T.reshape(-1, 2)
+        objp *= square_size
 
-        if debug:
-            self.__displayDebugImage(imageCopy)
+        objpoints = []  # 3d points in real world space
+        imgpoints = []  # 2d points in image plane
 
-        message = "Calibration successful"
-        return True, calibrationData, perspectiveMatrix, message
+        message = f"Processing {len(self.calibrationImages)} images for chessboard detection..."
+        self.messageBroker.publish(self.topic, message)
 
-    def getWorkAreaMatrix(self, dst_points, src_points):
-        """
-        Computes and saves the perspective transform matrix.
-        """
-        print("Computing perspective transform matrix...")
-        perspectiveMatrix, _ = cv2.findHomography(src_points, dst_points)
-        print("Perspective transform matrix computed.")
-        print("Saving perspective matrix...")
-        np.save(self.PERSPECTIVE_MATRIX_PATH, perspectiveMatrix)
-        print("Saving perspective")
-        return perspectiveMatrix
+        valid_images = 0
+        for idx, img in enumerate(self.calibrationImages):
+            if img is None:
+                continue
 
-    def sortCorners(self, corners):
-        """
-        Sorts corners to identify bottomLeft, bottomRight, topLeft, topRight.
-        """
-        points = np.squeeze(corners)
-        topLeft = min(points, key=lambda p: p[0] + p[1])
-        topRight = max(points, key=lambda p: p[0] - p[1])
-        bottomLeft = min(points, key=lambda p: p[0] - p[1])
-        bottomRight = max(points, key=lambda p: p[0] + p[1])
-        return bottomLeft, bottomRight, topLeft, topRight
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    def computeCameraToRobotTransformationMatrix(self, camera_pts, robot_pts):
-        """
-        Computes the homography transformation matrix from camera coordinates to robot coordinates.
-        """
-        camera_pts = np.array(camera_pts, dtype=np.float32)
-        robot_pts = np.array(robot_pts, dtype=np.float32)
-        homography_matrix, _ = cv2.findHomography(camera_pts, robot_pts)
-        return homography_matrix
+            # Find the chessboard corners
+            ret, corners = cv2.findChessboardCorners(gray, chessboard_size, None)
 
-    def __displayDebugImage(self, image):
-        cv2.imshow("Debug", image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+            if ret:
+                objpoints.append(objp)
+
+                # Refine corner positions
+                corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1),
+                                            criteria=(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001))
+                imgpoints.append(corners2)
+
+                # Draw and save the corners for visualization
+                cv2.drawChessboardCorners(img, chessboard_size, corners2, ret)
+                output_path = os.path.join(self.STORAGE_PATH, f'calib_result_{idx:03d}.png')
+                cv2.imwrite(output_path, img)
+
+                valid_images += 1
+                print(f"✅ Chessboard detected in image {idx}")
+                message = f"✅ Chessboard detected in image {idx} - saved to {output_path}"
+                self.messageBroker.publish(self.topic,message)
+            else:
+                print(f"❌ No chessboard found in image {idx}")
+                message = f"❌ No chessboard found in image {idx}"
+                self.messageBroker.publish(self.topic, message)
+
+        if valid_images < 3:  # Need at least 3 good images for calibration
+            message = f"Insufficient valid images for calibration. Found {valid_images}, need at least 3."
+            print(f"❌ {message}")
+            self.messageBroker.publish(self.topic, message)
+            return False, None, None, message
+
+        # Perform camera calibration
+        print(f"🔧 Performing calibration with {valid_images} valid images...")
+        message = f"🔧 Performing calibration with {valid_images} valid images..."
+        self.messageBroker.publish(self.topic, message)
+
+        try:
+            ret, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(
+                objpoints, imgpoints, gray.shape[::-1], None, None
+            )
+
+            if ret:
+                # Save calibration results
+                calibration_file = os.path.join(self.STORAGE_PATH, 'calibration_data.npz')
+                np.savez(calibration_file,
+                         camera_matrix=camera_matrix,
+                         dist_coeffs=dist_coeffs,
+                         rvecs=rvecs,
+                         tvecs=tvecs)
+
+                # Store in instance variables
+                self.camera_matrix = camera_matrix
+                self.dist_coeffs = dist_coeffs
+                self.calibrated = True
+
+
+                print("✅ Camera calibration completed successfully!")
+                message = "✅ Camera calibration completed successfully!"
+                self.messageBroker.publish(self.topic, message)
+
+                print(f"📊 Calibration parameters saved to: {calibration_file}")
+                message = f"📊 Calibration parameters saved to: {calibration_file}"
+                self.messageBroker.publish(self.topic, message)
+
+                message = f"Calibration successful with {valid_images} images"
+                self.messageBroker.publish(self.topic, message)
+                return True, [dist_coeffs,camera_matrix],None, message
+            else:
+                message = "Camera calibration failed during cv2.calibrateCamera"
+                print(f"❌ {message}")
+                self.messageBroker.publish(self.topic, message)
+                return False, None, None, message
+
+        except Exception as e:
+            message = f"Exception during calibration: {str(e)}"
+            self.messageBroker.publish(self.topic, message)
+            print(f"❌ {message}")
+            return False, None, None, message
+
+
+    #
+    # def getWorkAreaMatrix(self, dst_points, src_points):
+    #     """
+    #     Computes and saves the perspective transform matrix.
+    #     """
+    #     print("Computing perspective transform matrix...")
+    #     perspectiveMatrix, _ = cv2.findHomography(src_points, dst_points)
+    #     print("Perspective transform matrix computed.")
+    #     print("Saving perspective matrix...")
+    #     np.save(self.PERSPECTIVE_MATRIX_PATH, perspectiveMatrix)
+    #     print("Saving perspective")
+    #     return perspectiveMatrix
+    #
+    # def sortCorners(self, corners):
+    #     """
+    #     Sorts corners to identify bottomLeft, bottomRight, topLeft, topRight.
+    #     """
+    #     points = np.squeeze(corners)
+    #     topLeft = min(points, key=lambda p: p[0] + p[1])
+    #     topRight = max(points, key=lambda p: p[0] - p[1])
+    #     bottomLeft = min(points, key=lambda p: p[0] - p[1])
+    #     bottomRight = max(points, key=lambda p: p[0] + p[1])
+    #     return bottomLeft, bottomRight, topLeft, topRight
+    #
+    # def computeCameraToRobotTransformationMatrix(self, camera_pts, robot_pts):
+    #     """
+    #     Computes the homography transformation matrix from camera coordinates to robot coordinates.
+    #     """
+    #     camera_pts = np.array(camera_pts, dtype=np.float32)
+    #     robot_pts = np.array(robot_pts, dtype=np.float32)
+    #     homography_matrix, _ = cv2.findHomography(camera_pts, robot_pts)
+    #     return homography_matrix
+    #
+    # def __displayDebugImage(self, image):
+    #     cv2.imshow("Debug", image)
+    #     cv2.waitKey(0)
+    #     cv2.destroyAllWindows()

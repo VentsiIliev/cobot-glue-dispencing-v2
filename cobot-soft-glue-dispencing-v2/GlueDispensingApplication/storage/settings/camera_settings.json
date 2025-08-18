@@ -3,10 +3,12 @@
     "Width": 1280,
     "Height": 720,
     "Skip frames": 30,
-    "Threshold": 150,
+    "Threshold": 100,
     "Epsilon": 0.004,
+    "Min contour area": 1000,
+    "Max contour area": 100000,
     "Contour detection": true,
-    "Draw contours": true,
+    "Draw contours": false,
     "Preprocessing": {
         "Gaussian blur": true,
         "Blur kernel size": 5,
@@ -32,7 +34,7 @@
         "Target brightness": 128
     },
     "Aruco": {
-        "Enable detection": false,
+        "Enable detection": true,
         "Dictionary": "DICT_4X4_250",
         "Flip image": false
     }

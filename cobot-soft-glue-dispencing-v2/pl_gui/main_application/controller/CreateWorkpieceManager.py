@@ -28,9 +28,10 @@ class CreateWorkpieceManager:
         sprayPatternsDict['Fill'] = wp_contours_data.get('Fill')
 
         from API.shared.workpiece.Workpiece import WorkpieceField
-
         data[WorkpieceField.SPRAY_PATTERN.value] = sprayPatternsDict
         data[WorkpieceField.CONTOUR.value] = wp_contours_data.get('External')
+        print("Workpiece data to save:", data)
+
         self.controller.handle(SAVE_WORKPIECE, data)
 
     def via_camera_success(self,frame,contours,data):
@@ -40,7 +41,7 @@ class CreateWorkpieceManager:
             "Contour": [],
             "Fill": []
         }
-
+        print("Contours by layer:", contours_by_layer)
         self.contour_editor.init_contours(contours_by_layer)
         self.contour_editor.set_create_workpiece_for_on_submit_callback(self.via_camera_on_create_workpiece_submit)
 

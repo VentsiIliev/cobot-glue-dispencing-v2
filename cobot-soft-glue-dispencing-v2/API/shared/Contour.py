@@ -5,9 +5,9 @@ import numpy as np
 class Contour:
     def __init__(self, contour_points):
         # print contour_points type and shape
-        print(f"Initializing Contour with points type before reshape: {type(contour_points)}, shape: {getattr(contour_points, 'shape', None)}")
+        # print(f"Initializing Contour with points type before reshape: {type(contour_points)}, shape: {getattr(contour_points, 'shape', None)}")
         contour_points = contour_points.reshape((-1, 1, 2)).astype(np.float32)
-        print(f"Initializing Contour with points typ e after reshape: {type(contour_points)}, shape: {getattr(contour_points, 'shape', None)}")
+        # print(f"Initializing Contour with points typ e after reshape: {type(contour_points)}, shape: {getattr(contour_points, 'shape', None)}")
         if not isinstance(contour_points, np.ndarray):
             contour_points = np.array(contour_points, dtype=np.float32)
         self.contour_points = contour_points

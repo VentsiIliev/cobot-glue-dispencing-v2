@@ -200,16 +200,10 @@ class RequestHandler:
             externalContour = externalContours[0]
         data[WorkpieceField.CONTOUR.value] = externalContour
 
-        # contours = utils.applyTransformation(self.cameraSystemController.cameraService.getCameraToRobotMatrix(), contours)
-        # fill = utils.applyTransformation(self.cameraSystemController.cameraService.getCameraToRobotMatrix(), fill)
-
         sprayPattern['Contour'] = contours
         sprayPattern['Fill'] = fill
 
         contour = data.get(WorkpieceField.CONTOUR.value,[])
-        # from API.shared.Contour import Contour
-        # cntObj = Contour(contour)
-        # cntObj.simplify()
 
         data[WorkpieceField.SPRAY_PATTERN.value] = sprayPattern
         print("Data after transform: ", data)
@@ -256,7 +250,7 @@ class RequestHandler:
             height, contourArea, contour, scaleFactor, image,message,originalContours = data
 
             # Temporary workaround: force height to 4
-            print("before comparison Height:", height)
+
             if height is None:
                 height = 4
             if height < 4 or height > 4:

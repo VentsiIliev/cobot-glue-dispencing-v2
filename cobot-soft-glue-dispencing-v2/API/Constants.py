@@ -87,9 +87,11 @@ ROBOT_CALIBRATE = "robot/calibrate"
 ROBOT_CALIBRATE_PICKUP = "robot/calibPickup"
 
 CAMERA_ACTION_GET_LATEST_FRAME = "camera/getLatestFrame"
+CAMERA_ACTION_CAPTURE_CALIBRATION_IMAGE = "camera/captureCalibrationImage"  # Capture image for calibration
 CAMERA_ACTION_RAW_MODE_ON = "camera/rawModeOn"            # Enable raw image mode
 CAMERA_ACTION_RAW_MODE_OFF = "camera/rawModeOff"
 CAMERA_ACTION_CALIBRATE = "camera/calibrate"
+CAMERA_ACTION_TEST_CALIBRATION = "camera/testCalibration"  # Test camera calibration
 
 SETTINGS_ROBOT_GET = "settings/robot/get"
 SETTINGS_ROBOT_SET = "settings/robot/set"

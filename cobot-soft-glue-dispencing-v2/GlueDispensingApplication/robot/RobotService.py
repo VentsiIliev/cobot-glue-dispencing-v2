@@ -30,7 +30,7 @@ import time
 import math
 
 
-class PositionFetcher:
+class RobotStateManager:
     def __init__(self, controller_cycle_time=0.01, proportional_gain=0.34, speed_threshold=1, accel_threshold=0.001):
         self.robot = RobotWrapper(ROBOT_IP)
         self.pos = None
@@ -41,7 +41,7 @@ class PositionFetcher:
         self.prev_pos = None
         self.prev_time = None
         self.prev_speed = None
-
+        self.trajectoryUpdate = False
         self._stop_event = threading.Event()
 
         self.following_error_gain = controller_cycle_time / proportional_gain
@@ -87,7 +87,8 @@ class PositionFetcher:
                 self.update_state()
                 self.broker.publish("robot/state", {"state": self.state, "speed": self.speed, "accel": self.accel})
 
-                if self.state != "stationary":
+                if self.state != "stationary" and self.trajectoryUpdate:
+
                     x = current_pos[0]
                     y = current_pos[1]
 
@@ -187,7 +188,7 @@ class RobotService:
         self.robot.printSdkVersion()
         self.pump = VacuumPump()
         self.laser = Laser()
-        self.positionFetcher = PositionFetcher()
+        self.positionFetcher = RobotStateManager()
         self.positionFetcher.start_thread()
 
         # self.positionFether.start_thread()
@@ -476,6 +477,7 @@ class RobotService:
                 CURRENT_STATE = EXECUTING_PATH_STATE
 
             elif CURRENT_STATE == EXECUTING_PATH_STATE:
+                self.positionFetcher.trajectoryUpdate = True
                 path, settings = paths[current_path_index]
                 velocity = settings.get(RobotSettingKey.VELOCITY.value)
                 acceleration = settings.get(RobotSettingKey.ACCELERATION.value)
@@ -487,9 +489,9 @@ class RobotService:
                     self.robot.moveL(point, ROBOT_TOOL, ROBOT_USER, vel=velocity, acc=acceleration, blendR=1)
                     # self.adjustPumpSpeedWhileRobotIsMoving(service, glue_speed_coefficient, glueType, pumpSpeed, point,
                     #                                        reach_end_threshold)
-
+                    self._waitForRobotToReachPosition(point, reach_end_threshold, 0.1)
                 # service.motorOff(glueType, speedReverse=speedReverse, delay=reverseDuration)
-
+                self.positionFetcher.trajectoryUpdate=False
                 CURRENT_STATE = TRANSITION_BETWEEN_PATHS_STATE
 
             elif CURRENT_STATE == TRANSITION_BETWEEN_PATHS_STATE:

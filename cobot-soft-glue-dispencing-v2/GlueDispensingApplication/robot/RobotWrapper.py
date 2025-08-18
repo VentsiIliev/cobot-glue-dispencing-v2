@@ -227,6 +227,7 @@ class RobotWrapper:
               """
         axis = axis.value
         direction = direction.value
+        print(f"StartJOG: axis={axis}, direction={direction}, step={step}, vel={vel}, acc={acc}")
         return self.robot.StartJOG(ref=4,nb=axis,dir=direction,vel=vel,acc=acc,max_dis=step)
 
 

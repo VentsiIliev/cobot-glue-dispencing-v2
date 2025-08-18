@@ -425,6 +425,7 @@ class DashboardWidget(QWidget):
         broker = MessageBroker()
         broker.subscribe("robot/trajectory/point", self.trajectory_widget.update)
         broker.subscribe("robot/trajectory/updateImage", self.trajectory_widget.set_image)
+        # broker.subscribe("robot/trajectory/newTrail", self.trajectory_widget.start_new_trail)
 
         # Place trajectory widget in the first cell (index 0) - spans 2 columns
         self.left_grid_container.layout.addWidget(trajectory_frame, 0, 0, 1, 2)  # row=0, col=0, rowspan=1, colspan=2

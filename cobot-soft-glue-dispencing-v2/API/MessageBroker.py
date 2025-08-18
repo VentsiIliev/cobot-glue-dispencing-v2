@@ -30,6 +30,7 @@ class MessageBroker:
             weak_callback = weakref.ref(callback, self._cleanup_callback(topic, callback))
 
         self.subscribers[topic].append(weak_callback)
+        print(f"Subscribed to topic '{topic}' with callback {callback.__name__ if hasattr(callback, '__name__') else str(callback)}")
         self.logger.debug(f"Subscribed to topic '{topic}'. Total subscribers: {len(self.subscribers[topic])}")
 
     def _cleanup_callback(self, topic: str, original_callback: Callable):

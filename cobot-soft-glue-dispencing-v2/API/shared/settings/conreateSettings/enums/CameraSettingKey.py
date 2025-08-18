@@ -10,6 +10,8 @@ class CameraSettingKey(Enum):
     # Contour & shape detection
     THRESHOLD = "Threshold"
     EPSILON = "Epsilon"
+    MIN_CONTOUR_AREA = "Min contour area"
+    MAX_CONTOUR_AREA = "Max contour area"
     CONTOUR_DETECTION = "Contour detection"
     DRAW_CONTOURS = "Draw contours"
 

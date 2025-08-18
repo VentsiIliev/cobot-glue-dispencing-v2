@@ -232,7 +232,7 @@ class MainContent(QFrame):
         }
 
         print("Loading contours into editor: ", contours_by_layer)
-
+        print("EXTERNAL CONTOURS: ", contours_by_layer["External"])
         self.parent.contourEditor.init_contours(contours_by_layer)
         self.parent.contourEditor.createWorkpieceForm.onSubmitCallBack = self.onCreateWorkpieceSubmit
 
@@ -262,6 +262,7 @@ class MainContent(QFrame):
 
         data[WorkpieceField.SPRAY_PATTERN.value] = sprayPatternsDict
         data[WorkpieceField.CONTOUR.value] = wp_contours_data.get('External')
+        print("EXTERNAL CONTOURS AFTER WP FORM: ", data[WorkpieceField.CONTOUR.value])
 
         self.side_menu.uncheck_all_buttons()
         self.testWidget.camera_feed.resume_feed()

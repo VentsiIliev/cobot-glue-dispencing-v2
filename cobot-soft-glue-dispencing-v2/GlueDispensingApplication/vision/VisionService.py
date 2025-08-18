@@ -155,30 +155,7 @@ class _VisionService(VisionSystem):
             with self.frame_lock:
                 self.latest_frame = frame
 
-    def processContours(self):
-        """
-               Processes the contours by applying transformations and preparing them for further use.
 
-               The contours are transformed based on the camera-to-robot matrix and returned for further processing.
-
-               Returns:
-                   tuple: A tuple containing a boolean indicating success and the transformed contours.
-               """
-        message = ""
-        # cv2.imwrite("imageDebug.png", self.correctedImage)
-        if self.contours is None or len(self.contours) == 0:
-            message = "No contours detected"
-            print("Returning: ", message)
-            return False, message
-
-        # transformedContours = utils.applyTransformation(self.cameraToRobotMatrix,
-        #                                                 self.contours.copy())
-        transformedContours = self.contours.copy()
-        # for cnt in transformedContours:
-        #     cnt.append(cnt[0])
-        # return as numpy array
-
-        return True,transformedContours
 
     def getLatestFrame(self):
         """

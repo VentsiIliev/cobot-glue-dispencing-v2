@@ -224,9 +224,25 @@ class SmoothTrajectoryWidget(QWidget):
         self._draw_smooth_trail()
 
         if self.current_position is not None and self.show_current_point:
-            # Draw current position with Material Design styling
-            cv2.circle(self.current_frame, self.current_position, 8, self.current_point_color, -1)
-            cv2.circle(self.current_frame, self.current_position, 12, (255, 255, 255), 2)
+            x, y = self.current_position
+
+            # Animated pulsing effect
+            pulse_factor = 0.5 + 0.5 * math.sin(time.time() * 4)
+            outer_radius = int(12 + pulse_factor * 6)
+            inner_radius = int(6 + pulse_factor * 2)
+
+            # Outer glow ring
+            cv2.circle(self.current_frame, (x, y), outer_radius, (255, 255, 255, 100), 3)
+
+            # Main position dot with gradient effect
+            cv2.circle(self.current_frame, (x, y), inner_radius, (0, 150, 255), -1)
+            cv2.circle(self.current_frame, (x, y), inner_radius - 2, (100, 200, 255), -1)
+            cv2.circle(self.current_frame, (x, y), max(1, inner_radius - 4), (255, 255, 255), -1)
+
+            # Crosshair for precision
+            line_len = 20
+            cv2.line(self.current_frame, (x - line_len, y), (x + line_len, y), (0, 255, 0), 2)
+            cv2.line(self.current_frame, (x, y - line_len), (x, y + line_len), (0, 255, 0), 2)
 
         self._update_label_from_frame()
         self.update_count += 1
@@ -251,16 +267,52 @@ class SmoothTrajectoryWidget(QWidget):
 
         total = len(smoothed_points)
 
+        # Enhanced gradient trail with multiple color segments
         for i in range(total - 1):
-            fade_factor = (i + 1) / total if self.trail_fade else 1.0
-            color = (
-                int(self.trail_color[0] * fade_factor),
-                int(self.trail_color[1] * fade_factor),
-                int(self.trail_color[2] * fade_factor)
-            )
-            thickness = max(1, int(self.trail_thickness * fade_factor * 1.5))
+            progress = (i + 1) / total
+
+            # Create a more sophisticated color gradient
+            if progress < 0.3:
+                # Start with subtle blue
+                fade_factor = progress / 0.3
+                color = (
+                    int(200 * fade_factor),
+                    int(100 * fade_factor),
+                    int(50 * fade_factor)
+                )
+            elif progress < 0.7:
+                # Transition to purple
+                fade_factor = (progress - 0.3) / 0.4
+                color = (
+                    int(156 + (100 * fade_factor)),
+                    int(39 + (50 * fade_factor)),
+                    int(176 + (79 * fade_factor))
+                )
+            else:
+                # End with bright magenta/pink
+                fade_factor = (progress - 0.7) / 0.3
+                color = (
+                    int(255 * fade_factor),
+                    int(89 * fade_factor),
+                    int(255 * fade_factor)
+                )
+
+            # Progressive thickness that gets thicker towards the end
+            thickness = max(1, int(2 + (progress * 4)))
+
             cv2.line(self.current_frame, smoothed_points[i], smoothed_points[i + 1],
                      color, thickness, lineType=cv2.LINE_AA)
+
+        # Add glow effect for recent points
+        if len(smoothed_points) > 10:
+            recent_points = smoothed_points[-10:]
+            for i in range(len(recent_points) - 1):
+                # Outer glow
+                cv2.line(self.current_frame, recent_points[i], recent_points[i + 1],
+                         (255, 200, 255), 8, lineType=cv2.LINE_AA)
+                # Inner bright line
+                cv2.line(self.current_frame, recent_points[i], recent_points[i + 1],
+                         (255, 100, 255), 3, lineType=cv2.LINE_AA)
 
     def _update_label_from_frame(self):
         rgb_image = cv2.cvtColor(self.current_frame, cv2.COLOR_BGR2RGB)
@@ -345,6 +397,7 @@ class TestWindow(QWidget):
         broker = MessageBroker()
         broker.subscribe("robot/trajectory/point", self.camera_widget.update)
         broker.subscribe("robot/trajectory/updateImage", self.camera_widget.set_image)
+
         layout.addWidget(self.camera_widget)
         self.setLayout(layout)
         self.start_smooth_trajectory_thread()

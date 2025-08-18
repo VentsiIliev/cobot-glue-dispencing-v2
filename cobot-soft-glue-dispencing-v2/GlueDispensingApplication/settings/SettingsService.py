@@ -335,6 +335,10 @@ class SettingsService:
             self.camera_settings.set_threshold(settings.get(CameraSettingKey.THRESHOLD.value))
         if CameraSettingKey.EPSILON.value in settings:
             self.camera_settings.set_epsilon(settings.get(CameraSettingKey.EPSILON.value))
+        if CameraSettingKey.MIN_CONTOUR_AREA.value in settings:
+            self.camera_settings.set_min_contour_area(settings.get(CameraSettingKey.MIN_CONTOUR_AREA.value))
+        if CameraSettingKey.MAX_CONTOUR_AREA.value in settings:
+            self.camera_settings.set_max_contour_area(settings.get(CameraSettingKey.MAX_CONTOUR_AREA.value))
         if CameraSettingKey.CONTOUR_DETECTION.value in settings:
             self.camera_settings.set_contour_detection(settings.get(CameraSettingKey.CONTOUR_DETECTION.value))
         if CameraSettingKey.DRAW_CONTOURS.value in settings:
