@@ -7,9 +7,12 @@ from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor, QResizeEvent
 from pl_gui.Endpoints import CREATE_WORKPIECE_TOPIC
 
 # Assuming your resource directory structure
-RESOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "resources")
-CAMERA_ICON_PATH = os.path.join(RESOURCE_DIR, "pl_ui_icons", "camera_icon.png")
-DXF_ICON_PATH = os.path.join(RESOURCE_DIR, "pl_ui_icons", "DXF_BUTTON.png")
+RESOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources")
+print("Resource directory:", RESOURCE_DIR)
+CAMERA_ICON_PATH = os.path.join(RESOURCE_DIR, "createWorkpieceOptions", "camera.png")
+# D:\GitHub\cobot-soft-v2\cobot-soft-glue-dispencing-v2\pl_gui\main_application\resources\createWorkpieceOptions
+print("Camera icon path:", CAMERA_ICON_PATH)
+DXF_ICON_PATH = os.path.join(RESOURCE_DIR, "createWorkpieceOptions", "dxf_file.png")
 
 
 class ResponsiveWorkpieceOptionButton(QPushButton):
@@ -60,13 +63,14 @@ class ResponsiveWorkpieceOptionButton(QPushButton):
         self.icon_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         # Text label
-        self.text_label = QLabel(self.text)
-        self.text_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.text_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #333;")
-        self.text_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        if self.text is not None and self.text != "":
+            self.text_label = QLabel(self.text)
+            self.text_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.text_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #333;")
+            self.text_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
 
+            layout.addWidget(self.text_label, 0)  # Text takes minimal space
         layout.addWidget(self.icon_label, 1)  # Give icon more space
-        layout.addWidget(self.text_label, 0)  # Text takes minimal space
 
         self.update_icon()
 
@@ -150,15 +154,6 @@ class WorkpieceOptionsWidget(QWidget):
             margin-bottom: 10px;
         """)
 
-        # Subtitle
-        self.subtitle_label = QLabel("Choose your input method:")
-        self.subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.subtitle_label.setStyleSheet("""
-            font-size: 16px;
-            color: #666;
-            margin-bottom: 20px;
-        """)
-
         # Buttons container
         buttons_container = QWidget()
         buttons_layout = QHBoxLayout(buttons_container)
@@ -166,12 +161,12 @@ class WorkpieceOptionsWidget(QWidget):
         buttons_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Camera button
-        self.camera_button = ResponsiveWorkpieceOptionButton(CAMERA_ICON_PATH, "Camera")
+        self.camera_button = ResponsiveWorkpieceOptionButton(CAMERA_ICON_PATH, "")
         self.camera_button.clicked.connect(self.on_camera_selected)
         self.camera_button.setMaximumSize(250, 200)  # Limit maximum size
 
         # DXF button
-        self.dxf_button = ResponsiveWorkpieceOptionButton(DXF_ICON_PATH, "DXF Upload")
+        self.dxf_button = ResponsiveWorkpieceOptionButton(DXF_ICON_PATH, "")
         self.dxf_button.clicked.connect(self.on_dxf_selected)
         self.dxf_button.setMaximumSize(250, 200)  # Limit maximum size
 
@@ -179,8 +174,7 @@ class WorkpieceOptionsWidget(QWidget):
         buttons_layout.addWidget(self.dxf_button)
 
         # Add to main layout
-        main_layout.addWidget(self.title_label)
-        main_layout.addWidget(self.subtitle_label)
+        # main_layout.addWidget(self.title_label)
         main_layout.addWidget(buttons_container)
 
         # Widget styling
@@ -207,13 +201,10 @@ class WorkpieceOptionsWidget(QWidget):
         # Scale font sizes based on widget width
         if widget_width < 500:
             title_size = 20
-            subtitle_size = 14
         elif widget_width < 700:
             title_size = 24
-            subtitle_size = 16
         else:
             title_size = 28
-            subtitle_size = 18
 
         self.title_label.setStyleSheet(f"""
             font-size: {title_size}px;
@@ -222,11 +213,7 @@ class WorkpieceOptionsWidget(QWidget):
             margin-bottom: 10px;
         """)
 
-        self.subtitle_label.setStyleSheet(f"""
-            font-size: {subtitle_size}px;
-            color: #666;
-            margin-bottom: 20px;
-        """)
+
 
     def on_camera_selected(self):
         """Handle camera button click"""

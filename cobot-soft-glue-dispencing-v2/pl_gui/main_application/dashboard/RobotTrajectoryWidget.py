@@ -1,3 +1,4 @@
+import os
 import sys
 import time
 import math
@@ -10,6 +11,11 @@ from PyQt6.QtCore import QTimer, Qt
 from PyQt6.QtGui import QFont, QImage, QPixmap, QPalette, QPainter, QColor
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 from API.MessageBroker import MessageBroker
+
+RESOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "resources")
+CAMERA_PREVIEW_PLACEHOLDER = os.path.join(RESOURCE_DIR, "pl_ui_icons", "Background_&_Logo_white.png")
+print(f"Using placeholder image from: {CAMERA_PREVIEW_PLACEHOLDER}")
+LOGO_ICO_PATH = os.path.join(RESOURCE_DIR, "pl_ui_icons", "logo.ico")
 
 
 class CompactCard(QFrame):
@@ -25,7 +31,6 @@ class CompactCard(QFrame):
                 border: none;
             }
         """)
-
         # Reduced shadow for compact design
         shadow = QGraphicsDropShadowEffect()
         shadow.setBlurRadius(10)
@@ -105,16 +110,80 @@ class SmoothTrajectoryWidget(QWidget):
 
         self.init_ui()
 
+        # FIXED: Improved logo loading with better error handling and debugging
+        self.logo_icon = None
+        self.load_logo_icon()
+
+        # Load placeholder image after UI is initialized
+        self.load_placeholder_image()
+
         # Timer to refresh display
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_display)
         self.timer.start(33)  # 30 FPS
 
+    def load_logo_icon(self):
+        """Load logo icon with improved error handling and debugging"""
+        print(f"Attempting to load logo from: {LOGO_ICO_PATH}")
+
+        # Check if file exists
+        if not os.path.exists(LOGO_ICO_PATH):
+            print(f"ERROR: Logo file does not exist at {LOGO_ICO_PATH}")
+            return
+
+        try:
+            # Try different approaches to load .ico file
+            # Method 1: Direct OpenCV load
+            logo = cv2.imread(LOGO_ICO_PATH, cv2.IMREAD_UNCHANGED)
+
+            if logo is None:
+                print("Method 1 failed: cv2.imread returned None")
+
+                # Method 2: Try loading as PNG (some .ico files are actually PNG)
+                try:
+                    from PIL import Image
+                    pil_image = Image.open(LOGO_ICO_PATH)
+                    pil_image = pil_image.convert('RGBA')
+                    logo = np.array(pil_image)
+                    # Convert RGBA to BGRA for OpenCV
+                    logo = cv2.cvtColor(logo, cv2.COLOR_RGBA2BGRA)
+                    print("Method 2 successful: Loaded via PIL")
+                except ImportError:
+                    print("PIL not available, trying alternative method")
+                except Exception as e:
+                    print(f"Method 2 failed: {e}")
+
+                    # Method 3: Try loading without alpha channel
+                    logo = cv2.imread(LOGO_ICO_PATH, cv2.IMREAD_COLOR)
+                    if logo is not None:
+                        print("Method 3 successful: Loaded without alpha channel")
+            else:
+                print("Method 1 successful: Direct OpenCV load")
+
+            if logo is not None:
+                print(f"Logo loaded successfully. Shape: {logo.shape}, dtype: {logo.dtype}")
+
+                # Resize to appropriate size (make it larger so it's more visible)
+                target_size = 36  # Increased from 32 to make it more visible
+                self.logo_icon = cv2.resize(logo, (target_size, target_size), interpolation=cv2.INTER_AREA)
+                print(f"Logo resized to: {self.logo_icon.shape}")
+
+                # Debug: Save the resized logo to verify it's correct
+                debug_path = "debug_logo.png"
+                cv2.imwrite(debug_path, self.logo_icon)
+                print(f"Debug logo saved to: {debug_path}")
+            else:
+                print("ERROR: Failed to load logo with all methods")
+
+        except Exception as e:
+            print(f"Exception while loading logo: {e}")
+            import traceback
+            traceback.print_exc()
+
     def init_ui(self):
         self.setWindowTitle("Trajectory Tracker")
 
         # Calculate exact widget size based on image dimensions
-        # Only add necessary padding, no extra space
         widget_width = self.image_width + 32  # 24 margins + 8 card padding
         widget_height = self.image_height + 80  # Metrics height + margins + card padding
 
@@ -129,8 +198,8 @@ class SmoothTrajectoryWidget(QWidget):
         """)
 
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(12, 12, 12, 12)  # Reduced margins
-        main_layout.setSpacing(8)  # Reduced spacing
+        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setSpacing(8)
 
         # Compact metrics at top
         metrics_card = CompactCard()
@@ -146,18 +215,16 @@ class SmoothTrajectoryWidget(QWidget):
 
         metrics_layout.addWidget(self.estimated_metric)
         metrics_layout.addWidget(self.time_left_metric)
-        metrics_layout.addStretch()  # Push metrics to left
+        metrics_layout.addStretch()
 
         main_layout.addWidget(metrics_card)
 
-        # Camera view with fixed size - no expansion
+        # Camera view with fixed size
         camera_card = CompactCard()
         camera_layout = QVBoxLayout(camera_card)
-        camera_layout.setContentsMargins(4, 4, 4, 4)  # Minimal padding
+        camera_layout.setContentsMargins(4, 4, 4, 4)
 
         self.image_label = QLabel()
-
-        # Set fixed size based on provided image dimensions - no expanding!
         self.image_label.setFixedSize(self.image_width, self.image_height)
 
         self.image_label.setStyleSheet("""
@@ -171,34 +238,63 @@ class SmoothTrajectoryWidget(QWidget):
         self.image_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         camera_layout.addWidget(self.image_label)
 
-        # Add stretch to push everything to top-left, preventing white space
         camera_layout.addStretch()
-
-        # Add camera card without stretch factor - only takes space it needs
         main_layout.addWidget(camera_card)
-
-        # Add stretch at the end to push content to top
         main_layout.addStretch()
 
-        # Remove the stretch factor settings since we're not using stretch factors anymore
-        # The layout will now only take the space it actually needs
+    def load_placeholder_image(self):
+        """Load and set placeholder image"""
+        try:
+            placeholder_image = cv2.imread(CAMERA_PREVIEW_PLACEHOLDER)
+
+            if placeholder_image is not None:
+                placeholder_image = cv2.resize(placeholder_image, (self.image_width, self.image_height))
+                self.base_frame = placeholder_image.copy()
+                self.current_frame = placeholder_image.copy()
+                self._update_label_from_frame()
+            else:
+                self.create_fallback_placeholder()
+
+        except Exception as e:
+            print(f"Error loading placeholder image: {e}")
+            self.create_fallback_placeholder()
+
+    def create_fallback_placeholder(self):
+        """Create a simple fallback placeholder when image file is not available"""
+        placeholder = np.full((self.image_height, self.image_width, 3), (64, 64, 64), dtype=np.uint8)
+
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        text = "Camera Feed"
+        font_scale = 1.0
+        color = (200, 200, 200)
+        thickness = 2
+
+        (text_width, text_height), _ = cv2.getTextSize(text, font, font_scale, thickness)
+        x = (self.image_width - text_width) // 2
+        y = (self.image_height + text_height) // 2
+
+        cv2.putText(placeholder, text, (x, y), font, font_scale, color, thickness)
+        cv2.rectangle(placeholder, (10, 10), (self.image_width - 10, self.image_height - 10), (100, 100, 100), 2)
+
+        self.base_frame = placeholder.copy()
+        self.current_frame = placeholder.copy()
+        self._update_label_from_frame()
 
     def update(self, message=None):
         if message is None:
             return
 
         x, y = message.get("x", 0), message.get("y", 0)
-        # Adjust center point based on actual image dimensions
-        # screen_x = int(x + self.image_width // 2)
-        # screen_y = int(y + self.image_height // 2)
+        screen_x = int(x + self.image_width // 2)
+        screen_y = int(y + self.image_height // 2)
 
         self.last_position = self.current_position
-        self.current_position = (x, y)
+        self.current_position = (screen_x, screen_y)
 
         if self.last_position is not None and self.interpolate_motion:
             self._add_interpolated_points(self.last_position, self.current_position)
         else:
-            self.trajectory_points.append((x, y, time.time()))
+            self.trajectory_points.append((screen_x, screen_y, time.time()))
 
     def _add_interpolated_points(self, start_pos, end_pos, num_interpolated=3):
         start_x, start_y = start_pos
@@ -221,28 +317,20 @@ class SmoothTrajectoryWidget(QWidget):
             return
 
         self.current_frame = self.base_frame.copy()
+
+        # Clean up old trajectory points
+        current_time = time.time()
+        while self.trajectory_points and current_time - self.trajectory_points[0][2] > 10:
+            self.trajectory_points.popleft()
+
+        while len(self.trajectory_points) > self.trail_length:
+            self.trajectory_points.popleft()
+
         self._draw_smooth_trail()
 
+        # FIXED: Improved logo drawing with better bounds checking and debugging
         if self.current_position is not None and self.show_current_point:
-            x, y = self.current_position
-
-            # Animated pulsing effect
-            pulse_factor = 0.5 + 0.5 * math.sin(time.time() * 4)
-            outer_radius = int(12 + pulse_factor * 6)
-            inner_radius = int(6 + pulse_factor * 2)
-
-            # Outer glow ring
-            cv2.circle(self.current_frame, (x, y), outer_radius, (255, 255, 255, 100), 3)
-
-            # Main position dot with gradient effect
-            cv2.circle(self.current_frame, (x, y), inner_radius, (0, 150, 255), -1)
-            cv2.circle(self.current_frame, (x, y), inner_radius - 2, (100, 200, 255), -1)
-            cv2.circle(self.current_frame, (x, y), max(1, inner_radius - 4), (255, 255, 255), -1)
-
-            # Crosshair for precision
-            line_len = 20
-            cv2.line(self.current_frame, (x - line_len, y), (x + line_len, y), (0, 255, 0), 2)
-            cv2.line(self.current_frame, (x, y - line_len), (x, y + line_len), (0, 255, 0), 2)
+            self._draw_logo_at_position()
 
         self._update_label_from_frame()
         self.update_count += 1
@@ -250,6 +338,59 @@ class SmoothTrajectoryWidget(QWidget):
         # Update time displays
         self.estimated_metric.update_value(f"{self.estimated_time_value:.2f} s")
         self.time_left_metric.update_value(f"{self.time_left_value:.2f} s")
+
+    def _draw_logo_at_position(self):
+        """Draw logo at current position with improved error handling"""
+        if self.logo_icon is None:
+            print("Logo icon is None, drawing fallback circle")
+            # Fallback: draw a simple circle if logo is not available
+            x, y = self.current_position
+            if 0 <= x < self.image_width and 0 <= y < self.image_height:
+                cv2.circle(self.current_frame, (x, y), 15, (0, 255, 255), 3)  # Yellow circle
+                cv2.circle(self.current_frame, (x, y), 8, (0, 0, 255), -1)  # Red filled center
+            return
+
+        x, y = self.current_position
+        h, w = self.logo_icon.shape[:2]
+
+        # Calculate position (center the logo on the point)
+        x1, y1 = x - w // 2, y - h // 2
+        x2, y2 = x1 + w, y1 + h
+
+        print(f"Drawing logo at position ({x}, {y}), logo size: {w}x{h}, bounds: ({x1},{y1}) to ({x2},{y2})")
+        print(f"Frame size: {self.current_frame.shape[1]}x{self.current_frame.shape[0]}")
+
+        # Check bounds with some tolerance
+        if x1 >= 0 and y1 >= 0 and x2 <= self.current_frame.shape[1] and y2 <= self.current_frame.shape[0]:
+            try:
+                if len(self.logo_icon.shape) == 3 and self.logo_icon.shape[2] == 4:
+                    # Logo has alpha channel
+                    print("Drawing logo with alpha blending")
+                    alpha_logo = self.logo_icon[:, :, 3] / 255.0
+                    alpha_bg = 1.0 - alpha_logo
+
+                    for c in range(0, 3):
+                        self.current_frame[y1:y2, x1:x2, c] = (
+                                alpha_logo * self.logo_icon[:, :, c] +
+                                alpha_bg * self.current_frame[y1:y2, x1:x2, c]
+                        ).astype(np.uint8)
+                    print("Alpha blending completed")
+                else:
+                    # No alpha channel, direct paste
+                    print("Drawing logo without alpha")
+                    self.current_frame[y1:y2, x1:x2] = self.logo_icon
+                    print("Direct paste completed")
+
+            except Exception as e:
+                print(f"Error drawing logo: {e}")
+                # Fallback to circle
+                cv2.circle(self.current_frame, (x, y), 15, (0, 255, 0), 3)
+        else:
+            print(f"Logo position out of bounds, drawing at edge")
+            # Still draw something visible at the edge
+            safe_x = max(15, min(x, self.image_width - 15))
+            safe_y = max(15, min(y, self.image_height - 15))
+            cv2.circle(self.current_frame, (safe_x, safe_y), 10, (255, 0, 255), 2)
 
     def _draw_smooth_trail(self):
         if len(self.trajectory_points) < 2:
@@ -267,13 +408,10 @@ class SmoothTrajectoryWidget(QWidget):
 
         total = len(smoothed_points)
 
-        # Enhanced gradient trail with multiple color segments
         for i in range(total - 1):
             progress = (i + 1) / total
 
-            # Create a more sophisticated color gradient
             if progress < 0.3:
-                # Start with subtle blue
                 fade_factor = progress / 0.3
                 color = (
                     int(200 * fade_factor),
@@ -281,7 +419,6 @@ class SmoothTrajectoryWidget(QWidget):
                     int(50 * fade_factor)
                 )
             elif progress < 0.7:
-                # Transition to purple
                 fade_factor = (progress - 0.3) / 0.4
                 color = (
                     int(156 + (100 * fade_factor)),
@@ -289,7 +426,6 @@ class SmoothTrajectoryWidget(QWidget):
                     int(176 + (79 * fade_factor))
                 )
             else:
-                # End with bright magenta/pink
                 fade_factor = (progress - 0.7) / 0.3
                 color = (
                     int(255 * fade_factor),
@@ -297,42 +433,74 @@ class SmoothTrajectoryWidget(QWidget):
                     int(255 * fade_factor)
                 )
 
-            # Progressive thickness that gets thicker towards the end
             thickness = max(1, int(2 + (progress * 4)))
 
-            cv2.line(self.current_frame, smoothed_points[i], smoothed_points[i + 1],
-                     color, thickness, lineType=cv2.LINE_AA)
+            p1 = smoothed_points[i]
+            p2 = smoothed_points[i + 1]
 
-        # Add glow effect for recent points
+            if (0 <= p1[0] < self.image_width and 0 <= p1[1] < self.image_height and
+                    0 <= p2[0] < self.image_width and 0 <= p2[1] < self.image_height):
+                cv2.line(self.current_frame, p1, p2, color, thickness, lineType=cv2.LINE_AA)
+
+        # Glow effect for recent points
         if len(smoothed_points) > 10:
             recent_points = smoothed_points[-10:]
             for i in range(len(recent_points) - 1):
-                # Outer glow
-                cv2.line(self.current_frame, recent_points[i], recent_points[i + 1],
-                         (255, 200, 255), 8, lineType=cv2.LINE_AA)
-                # Inner bright line
-                cv2.line(self.current_frame, recent_points[i], recent_points[i + 1],
-                         (255, 100, 255), 3, lineType=cv2.LINE_AA)
+                p1 = recent_points[i]
+                p2 = recent_points[i + 1]
+
+                if (0 <= p1[0] < self.image_width and 0 <= p1[1] < self.image_height and
+                        0 <= p2[0] < self.image_width and 0 <= p2[1] < self.image_height):
+                    cv2.line(self.current_frame, p1, p2, (255, 200, 255), 8, lineType=cv2.LINE_AA)
+                    cv2.line(self.current_frame, p1, p2, (255, 100, 255), 3, lineType=cv2.LINE_AA)
 
     def _update_label_from_frame(self):
+        if self.current_frame is None:
+            return
+
         rgb_image = cv2.cvtColor(self.current_frame, cv2.COLOR_BGR2RGB)
         h, w, ch = rgb_image.shape
         q_image = QImage(rgb_image.data, w, h, ch * w, QImage.Format.Format_RGB888)
 
-        # Convert to pixmap and set directly without scaling
-        # The image should exactly match the label's fixed size
         pixmap = QPixmap.fromImage(q_image)
         self.image_label.setPixmap(pixmap)
 
     def set_image(self, message=None):
         """Receive an external image from outside."""
-        # Verify that the frame matches expected dimensions
+        if message is None or "image" not in message:
+            return
 
         frame = message.get("image")
-        frame = cv2.resize(frame, (self.image_width, self.image_height))
+        if frame is None:
+            self.load_placeholder_image()
+            return
 
-        self.base_frame = frame.copy()
-        self.clear_trail()
+        try:
+            frame = cv2.resize(frame, (self.image_width, self.image_height))
+            self.base_frame = frame.copy()
+            self.clear_trail()
+        except Exception as e:
+            print(f"Error setting image: {e}")
+            self.load_placeholder_image()
+
+    def set_placeholder_image(self, image_path=None):
+        """Set a custom placeholder image"""
+        if image_path is None:
+            image_path = CAMERA_PREVIEW_PLACEHOLDER
+
+        try:
+            placeholder = cv2.imread(image_path)
+            if placeholder is not None:
+                placeholder = cv2.resize(placeholder, (self.image_width, self.image_height))
+                self.base_frame = placeholder.copy()
+                self.current_frame = placeholder.copy()
+                self._update_label_from_frame()
+                return True
+        except Exception as e:
+            print(f"Error setting placeholder image: {e}")
+
+        self.create_fallback_placeholder()
+        return False
 
     def set_estimated_time(self, time_value):
         """Update estimated time value"""
@@ -356,16 +524,13 @@ class SmoothTrajectoryWidget(QWidget):
         self.image_width = width
         self.image_height = height
 
-        # Update widget to exact size needed
-        widget_width = width + 32  # 24 margins + 8 card padding
-        widget_height = height + 80  # Metrics height + margins + card padding
+        widget_width = width + 32
+        widget_height = height + 80
         self.setFixedSize(widget_width, widget_height)
 
-        # Update image label to new fixed size
         self.image_label.setFixedSize(width, height)
-
-        # Clear current trajectory since coordinates may be invalid
         self.clear_trail()
+        self.load_placeholder_image()
 
     def closeEvent(self, event):
         self.is_running = False
@@ -380,20 +545,20 @@ class TestWindow(QWidget):
         self.setGeometry(50, 50, 800, 600)
 
         layout = QVBoxLayout()
-        layout.setContentsMargins(8, 8, 8, 8)  # Reduced margins
-        layout.setSpacing(4)  # Reduced spacing
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(4)
 
-        # Smaller, compact title
         title = QLabel("Trajectory Tracker")
         title.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("color: #424242; margin: 4px;")
         layout.addWidget(title)
 
-        self.camera_widget = SmoothTrajectoryWidget(image_width=1280,image_height=720)
+        self.camera_widget = SmoothTrajectoryWidget(image_width=1280, image_height=720)
         self.camera_widget.set_image(np.zeros((1280, 720, 3), dtype=np.uint8))
         self.camera_widget.estimated_time_value = 5.0
         self.camera_widget.time_left_value = 3.0
+
         broker = MessageBroker()
         broker.subscribe("robot/trajectory/point", self.camera_widget.update)
         broker.subscribe("robot/trajectory/updateImage", self.camera_widget.set_image)
@@ -426,4 +591,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -12,7 +12,7 @@ from PyQt6.QtCore import (
     Qt, QPoint, pyqtSignal
 )
 from PyQt6.QtGui import (
-    QFont
+    QFont, QColor
 )
 from API.MessageBroker import MessageBroker
 from pl_gui.CameraFeed import CameraFeed
@@ -34,7 +34,7 @@ from pl_gui.customWidgets.FloatingToggleButton import FloatingToggleButton
 RESOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "resources")
 HIDE_CAMERA_FEED_ICON_PATH = os.path.join(RESOURCE_DIR, "pl_ui_icons", "HIDE_CAMERA_FEED.png")
 SHOW_CAMERA_FEED_ICON_PATH = os.path.join(RESOURCE_DIR, "pl_ui_icons", "SHOW_CAMERA_FEED.png")
-
+CAMERA_PREVIEW_PLACEHOLDER = os.path.join(RESOURCE_DIR, "pl_ui_icons", "Background_&_Logo_white.png")
 
 class CardContainer(QWidget):
     select_card_signal = pyqtSignal(object)
@@ -55,13 +55,13 @@ class CardContainer(QWidget):
         # This ensures all cells have the same size
         for row in range(self.rows):
             self.layout.setRowStretch(row, 1)
-            # Set minimum row height to ensure cards don't get squashed
-            self.layout.setRowMinimumHeight(row, 200)
+            # FIX: Use dynamic minimum height based on available space
+            self.layout.setRowMinimumHeight(row, 180)  # Reduced from 200
 
         for col in range(self.columns):
             self.layout.setColumnStretch(col, 1)
-            # Set minimum column width to ensure cards maintain proper width
-            self.layout.setColumnMinimumWidth(col, 250)
+            # FIX: Use dynamic minimum width based on available space
+            self.layout.setColumnMinimumWidth(col, 200)  # Reduced from 250
 
         # Set size policy for the container to ensure it expands properly
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -72,7 +72,8 @@ class CardContainer(QWidget):
             placeholder = EmptyPlaceholder()
             # Set size policy for placeholders to ensure they expand properly
             placeholder.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-            placeholder.setMinimumSize(250, 200)  # Set minimum size for placeholders
+            # FIX: Reduced minimum size to prevent overlapping
+            placeholder.setMinimumSize(200, 150)  # Reduced from 250, 200
 
             row = i // self.columns
             col = i % self.columns
@@ -83,6 +84,7 @@ class CardContainer(QWidget):
         self.select_card_signal.connect(self.select_card)
         broker = MessageBroker()
         broker.subscribe("glueType", self.selectCardByGlueType)
+
 
     def _replace_item_at_index(self, index, new_widget):
         """Replace widget at specific grid index"""
@@ -469,18 +471,10 @@ class DashboardWidget(QWidget):
         right_section.setSpacing(8)
         right_section.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        glue_title = QLabel("Glue Controls")
-        glue_title.setFont(QFont("Roboto", 12, QFont.Weight.Bold))
-        glue_title.setStyleSheet("""
-            color: #1D1B20;
-            margin-bottom: 8px;
-            padding: 8px 0px;
-        """)
-        glue_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        right_section.addWidget(glue_title)
 
         for i in range(1, self.glueMetersCount + 1):
             glue_card = self.create_glue_card(i, f"Glue {i}")
+            glue_card.setMinimumWidth(300)
             glue_card.setMinimumHeight(160)
             glue_card.setMaximumHeight(200)
             glue_card.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
@@ -577,11 +571,77 @@ class DashboardWidget(QWidget):
         glue_type_combo = QComboBox()
         glue_type_combo.addItems([glue_type.value for glue_type in GlueType])
         glue_type_combo.setCurrentText("Type A")
+        glue_type_combo.setObjectName(f"glue_combo_{index}")
 
+        # Create the card first
         card = DraggableCard(label_text, [glue_type_combo, meter],
                              remove_callback=self.remove_card_and_restore,
                              container=self.shared_card_container)
         card.glue_type_combo = glue_type_combo
+
+        # Apply styling AFTER the card is created to override any inherited styles
+        base_color = "#6750A4"
+        lighter = QColor(base_color).lighter(110).name()
+        darker = QColor(base_color).darker(110).name()
+
+        glue_type_combo.setStyleSheet(f"""
+            QComboBox#glue_combo_{index} {{
+                background: {base_color};
+                color: #FFFFFF;
+                border: none;
+                border-radius: 14px;
+                padding: 4px 12px;
+                font-size: 12px;
+            }}
+            QComboBox#glue_combo_{index}:hover {{
+                background: {lighter};
+            }}
+            QComboBox#glue_combo_{index}:pressed {{
+                background: {darker};
+            }}
+            QComboBox#glue_combo_{index}:disabled {{
+                background: #E8DEF8;
+                color: #79747E;
+            }}
+            QComboBox#glue_combo_{index}::drop-down {{
+                border: none;
+                background: transparent;
+            }}
+            QComboBox#glue_combo_{index}::drop-down:hover {{
+                background: {lighter};
+            }}
+            QComboBox#glue_combo_{index}::down-arrow {{
+                image: none;
+                border: none;
+                width: 0px;
+                height: 0px;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid #FFFFFF;
+                margin-right: 8px;
+            }}
+            QComboBox#glue_combo_{index} QAbstractItemView {{
+                border: 1px solid {base_color};
+                background-color: white;
+                selection-background-color: {base_color};
+                border-radius: 8px;
+                outline: none;
+            }}
+            QComboBox#glue_combo_{index} QAbstractItemView::item {{
+                padding: 8px 12px;
+                border: none;
+                color: #000000;
+            }}
+            QComboBox#glue_combo_{index} QAbstractItemView::item:hover {{
+                background-color: {lighter};
+                color: #FFFFFF;
+            }}
+            QComboBox#glue_combo_{index} QAbstractItemView::item:selected {{
+                background-color: {base_color};
+                color: #FFFFFF;
+            }}
+        """)
+
         return card
 
     def showCameraFeed(self):

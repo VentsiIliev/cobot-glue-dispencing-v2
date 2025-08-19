@@ -1,6 +1,7 @@
 from PyQt6.QtCore import pyqtSignal
 
 from pl_gui.main_application.appWidgets.AppWidget import AppWidget
+import os
 
 
 class CreateWorkpieceOptionsAppWidget(AppWidget):
@@ -42,3 +43,4 @@ class CreateWorkpieceOptionsAppWidget(AppWidget):
     def dxf_selected(self):
         """Handle DXF selection"""
         self.create_workpiece_dxf_selected.emit()
+

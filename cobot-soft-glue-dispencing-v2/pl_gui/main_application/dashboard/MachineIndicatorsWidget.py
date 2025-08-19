@@ -178,13 +178,16 @@ class MachineToolbar(QWidget):
         self.start_btn = MaterialButton("START", "#6750A4")
         self.stop_btn = MaterialButton("STOP", "#B3261E")
         self.pause_btn = MaterialButton("PAUSE", "#F57C00")
+        self.clean_btn = MaterialButton("CLEAN", "#F57C00")
         layout.addWidget(self.start_btn)
         layout.addWidget(self.stop_btn)
         layout.addWidget(self.pause_btn)
+        layout.addWidget(self.clean_btn)
 
         self.start_btn.clicked.connect(self.start_machine)
         self.pause_btn.clicked.connect(self.pause_machine)
         self.stop_btn.clicked.connect(self.stop_machine)
+        self.clean_btn.clicked.connect(self.clean_nozzle)
 
     def update_info_label_threadsafe(self, message):
         """Thread-safe version that emits signal instead of directly updating GUI"""
@@ -241,6 +244,10 @@ class MachineToolbar(QWidget):
     def stop_machine(self):
         if self.current_state != MachineState.STOPPED:
             self.set_state(MachineState.STOPPED)
+
+    def  clean_nozzle(self):
+        """Placeholder for cleaning nozzle functionality"""
+        print("Cleaning nozzle... (not implemented)")
 
     def complete_transition(self):
         import random

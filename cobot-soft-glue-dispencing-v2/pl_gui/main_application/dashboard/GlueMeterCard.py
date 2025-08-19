@@ -1,17 +1,11 @@
-import sys
-from PyQt6.QtWidgets import QApplication, QWidget, QFormLayout, QLineEdit, QLabel, QComboBox, QSizePolicy
-from PyQt6.QtGui import QFont, QIcon
-from PyQt6.QtCore import Qt
-from datetime import datetime, timedelta
-import random
+from PyQt6.QtWidgets import QWidget
+
+from API.MessageBroker import MessageBroker
+from API.localization.LanguageResourceLoader import LanguageResourceLoader
 from pl_gui.dashboard.DraggableCard import DraggableCard
 from pl_gui.dashboard.GlueMeterWidget import GlueMeterWidget
-from API.MessageBroker import MessageBroker
 from pl_gui.specific.enums.GlueType import GlueType
-from PyQt6.QtWidgets import QFrame
-from API.localization.LanguageResourceLoader import LanguageResourceLoader
-from API.localization.enums.Message import Message
-from pl_gui.dashboard.DraggableCard import DraggableCard
+
 
 class GlueSetpointFields(QWidget):
     def __init__(self, parent=None):
@@ -32,12 +26,7 @@ class GlueSetpointFields(QWidget):
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
 
 
-import sys
-from PyQt6.QtWidgets import QApplication, QWidget, QFormLayout, QLineEdit, QLabel, QComboBox, QSizePolicy, QVBoxLayout
-from PyQt6.QtGui import QFont, QIcon
-from PyQt6.QtCore import Qt
-from datetime import datetime, timedelta
-import random
+from PyQt6.QtWidgets import QFormLayout, QLineEdit, QComboBox, QSizePolicy, QVBoxLayout
 # from pl_gui.dashboard.DraggableCard import DraggableCard
 # from pl_gui.dashboard.GlueMeterWidget import GlueMeterWidget
 # from API.MessageBroker import MessageBroker
@@ -67,16 +56,47 @@ class GlueMeterCard(QFrame):
         self.glue_type_combo.addItems([GlueType.TypeA.value, GlueType.TypeB.value, GlueType.TypeC.value])
         self.glue_type_combo.setCurrentText("Type A")
 
-        # Create the setpoints widget
+        # Add hover styling to the combo box and dropdown items
+        self.glue_type_combo.setStyleSheet("""
+            QComboBox {
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                padding: 5px;
+                background-color: white;
+            }
+            QComboBox:hover {
+                background-color: #905BA9;
+                color: white;
+                border-color: #905BA9;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox::drop-down:hover {
+                background-color: #905BA9;
+            }
+            QComboBox QAbstractItemView {
+                border: 1px solid #ccc;
+                background-color: white;
+                selection-background-color: #905BA9;
+            }
+            QComboBox QAbstractItemView::item {
+                padding: 5px;
+                border: none;
+            }
+            QComboBox QAbstractItemView::item:hover {
+                background-color: #905BA9;
+                color: white;
+            }
+            QComboBox QAbstractItemView::item:selected {
+                background-color: #905BA9;
+                color: white;
+            }
+        """)
 
-        # Create the meter widget (placeholder for now)
         self.meter_widget = GlueMeterWidget(self.index)
-        # self.meter_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.meter_widget.setStyleSheet("background-color: #f0f0f0; border: 1px solid #ccc; padding: 20px;")
 
-        # Add all widgets to the main layout
-        # main_layout.addWidget(self.label)
-        # main_layout.addWidget(QLabel("Glue Type:"))
         main_layout.addWidget(self.glue_type_combo)
         main_layout.addWidget(self.meter_widget)
 
