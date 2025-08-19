@@ -7,6 +7,7 @@ import json
 import threading
 from GlueDispensingApplication.SensorPublisher import Sensor
 from API.MessageBroker import MessageBroker
+from pathlib import Path
 import time
 """
    Enum representing the types of glue used in the application.
@@ -16,6 +17,14 @@ import time
        TypeB (str): Represents Glue Type B.
        TypeC (str): Represents Glue Type C.
    """
+
+STORAGE_PATH = Path(__file__).parent.parent / "storage"
+print(f"Storage path: {STORAGE_PATH}")
+
+# Full path to config inside storage
+config_path = STORAGE_PATH / "glueCells" / "glue_cell_config.json"
+
+
 
 class GlueType(Enum):
     TypeA = "Type A"
@@ -284,24 +293,7 @@ class GlueMeter(Sensor):
             self.state = "READY"
             self.lastValue = weight
             return  weight
-        # try:
-        #     response = requests.get(self.url, timeout=self.fetchTimeout)
-        #     response.raise_for_status()
-        #
-        #     weight = float(response.text.strip())
-        #     # weight = (weight / 100) / 1.831 - 5231  # Calibrated glue weight
-        #
-        #     self.state = "READY"
-        #
-        #     if self.useLowPass:
-        #         if self.lastValue is None:
-        #             self.lastValue = weight
-        #         else:
-        #             self.lastValue = self.alpha * weight + (1 - self.alpha) * self.lastValue
-        #         return self.lastValue
-        #     else:
-        #         self.lastValue = weight
-        #         return weight
+
 
         except requests.exceptions.Timeout:
             self.state = "DISCONNECTED"
@@ -356,7 +348,7 @@ class GlueCellsManager:
         getCellById(id): Retrieves a glue cell by its unique identifier.
     """
 
-    def __init__(self, cells):
+    def __init__(self, cells, config_data, config_path):
         """
         Initializes a GlueCellsManager instance.
 
@@ -368,6 +360,50 @@ class GlueCellsManager:
         """
         self.logTag = "GlueCellsManager"
         self.setCells(cells)
+        self.config_path = config_path
+        self.config_data = config_data  # keep a copy of the loaded JSON
+
+
+    def updateGlueTypeById(self, id, glueType):
+        """
+        Updates the glue type of a specific glue cell by its unique identifier
+        and persists the change to the config file.
+        """
+        # Normalize string to enum
+        if glueType == GlueType.TypeA.value:
+            glueType = GlueType.TypeA
+        elif glueType == GlueType.TypeB.value:
+            glueType = GlueType.TypeB
+        elif glueType == GlueType.TypeC.value:
+            glueType = GlueType.TypeC
+        elif glueType == GlueType.TypeD.value:
+            glueType = GlueType.TypeD
+        elif isinstance(glueType, GlueType):
+            pass
+        else:
+            raise ValueError(f"[DEBUG] {self.logTag} Invalid glue type: {glueType}")
+
+        print(f"[DEBUG] {self.logTag} Updating glue type for cell {id} to {glueType}")
+        # Update in-memory object
+        cell = self.getCellById(id)
+        if cell is None:
+            return False
+
+        print(f"[DEBUG] {self.logTag} Updating cell {id} glue type to {glueType}")
+        cell.setGlueType(glueType)
+
+        # Update JSON data
+        for c in self.config_data["CELL_CONFIG"]:
+            if c["id"] == id:
+                c["type"] = glueType.name  # store enum name like "TypeA"
+                break
+
+        # Persist to file
+        with self.config_path.open("w") as f:
+            json.dump(self.config_data, f, indent=2)
+
+        return True
+
 
     def setCells(self, cells):
         """
@@ -411,32 +447,48 @@ class GlueCellsManager:
         """
         return f"CellsManager(cells={self.cells})"
 
-
-
-"""cells config in format [ID, GLUE TYPE, GLUE METER URL, CAPACITY]"""
-GLUE_CELL_MANAGER = None
-GLUE_CELL_CAPACITY = 5000
-GLUE_CELL_1_CFG = [1,GlueType.TypeA,"http://192.168.222.143/weight1",GLUE_CELL_CAPACITY]
-GLUE_CELL_2_CFG = [2,GlueType.TypeB,"http://192.168.222.143/weight2",GLUE_CELL_CAPACITY]
-GLUE_CELL_3_CFG = [3,GlueType.TypeC,"http://192.168.222.143/weight3",GLUE_CELL_CAPACITY]
-CELL_CONFIG = [GLUE_CELL_1_CFG, GLUE_CELL_2_CFG, GLUE_CELL_3_CFG]
-
 class GlueCellsManagerSingleton:
     _manager_instance = None
+    STORAGE_PATH = Path(__file__).parent.parent / "storage"
+    CONFIG_PATH = STORAGE_PATH / "glueCells" / "glue_cell_config.json"
 
     @staticmethod
     def get_instance():
         if GlueCellsManagerSingleton._manager_instance is None:
+            # Load config JSON inside the manager
+            with GlueCellsManagerSingleton.CONFIG_PATH.open("r") as f:
+                config_data = json.load(f)
+
+            type_map = {
+                "TypeA": GlueType.TypeA,
+                "TypeB": GlueType.TypeB,
+                "TypeC": GlueType.TypeC,
+                "TypeD": GlueType.TypeD
+            }
 
             cells = []
-            for cfg in CELL_CONFIG:
-                glueMeter = GlueMeter(cfg[0],cfg[2])
-                glueCell = GlueCell(id=cfg[0], glueType=cfg[1], glueMeter=glueMeter, capacity=cfg[3])
-                cells.append(glueCell)
+            for cell_cfg in config_data["CELL_CONFIG"]:
+                glue_type = type_map.get(cell_cfg["type"])
+                if glue_type is None:
+                    raise ValueError(f"Unknown glue type in config: {cell_cfg['type']}")
+                glue_meter = GlueMeter(cell_cfg["id"], cell_cfg["url"])
+                glue_cell = GlueCell(
+                    id=cell_cfg["id"],
+                    glueType=glue_type,
+                    glueMeter=glue_meter,
+                    capacity=cell_cfg["capacity"]
+                )
+                cells.append(glue_cell)
 
-            GlueCellsManagerSingleton._manager_instance = GlueCellsManager(cells)
+            # ✅ Pass config_data and CONFIG_PATH into manager
+            GlueCellsManagerSingleton._manager_instance = GlueCellsManager(
+                cells, config_data, GlueCellsManagerSingleton.CONFIG_PATH
+            )
 
         return GlueCellsManagerSingleton._manager_instance
+
+
+
 
 
 """     EXAMPLE USAGE   """

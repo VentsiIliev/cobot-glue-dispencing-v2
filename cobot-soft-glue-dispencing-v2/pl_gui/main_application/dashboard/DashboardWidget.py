@@ -14,15 +14,11 @@ from PyQt6.QtWidgets import (
 
 from API.MessageBroker import MessageBroker
 from pl_gui.CameraFeed import CameraFeed
-from pl_gui.customWidgets.FloatingToggleButton import FloatingToggleButton
 from pl_gui.dashboard.DraggableCard import DraggableCard
 from pl_gui.dashboard.EmptyPlaceholder import EmptyPlaceholder
 from pl_gui.dashboard.GlueMeterWidget import GlueMeterWidget
-from pl_gui.dashboard.TogglePanel import TogglePanel
-from pl_gui.main_application.dashboard.MachineIndicatorsWidget import MachineToolbar
 from pl_gui.main_application.dashboard.RobotTrajectoryWidget import SmoothTrajectoryWidget
 from pl_gui.specific.enums.GlueType import GlueType
-from pl_gui.main_application.dashboard.GlueMeterCard import GlueMeterCard
 
 RESOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "resources")
 HIDE_CAMERA_FEED_ICON_PATH = os.path.join(RESOURCE_DIR, "pl_ui_icons", "HIDE_CAMERA_FEED.png")
@@ -316,7 +312,7 @@ class CardContainer(QWidget):
 
 class DashboardWidget(QWidget):
     start_requested = pyqtSignal()
-    glue_type_changed_signal = pyqtSignal(str)
+    glue_type_changed_signal = pyqtSignal(int,str)
 
     def __init__(self, updateCameraFeedCallback, parent=None):
         super().__init__(parent)
@@ -565,7 +561,7 @@ class DashboardWidget(QWidget):
         glue_type_combo.addItems([glue_type.value for glue_type in GlueType])
         glue_type_combo.setCurrentText("Type A")
         glue_type_combo.setObjectName(f"glue_combo_{index}")
-        glue_type_combo.currentTextChanged.connect(lambda value: self.glue_type_changed_signal.emit(value))
+        glue_type_combo.currentTextChanged.connect(lambda value, idx=index: self.glue_type_changed_signal.emit(idx, value))
         # Create the card first
         card = DraggableCard(label_text, [glue_type_combo, meter],
                              remove_callback=self.remove_card_and_restore,

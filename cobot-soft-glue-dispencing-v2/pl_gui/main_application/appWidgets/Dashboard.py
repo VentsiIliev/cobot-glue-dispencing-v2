@@ -23,6 +23,7 @@ class DashboardAppWidget(AppWidget):
             # Remove the placeholder content
             content_widget = DashboardWidget(updateCameraFeedCallback=lambda: self.controller.handle(UPDATE_CAMERA_FEED))
             content_widget.start_requested.connect(self.start_requested.emit)
+            content_widget.glue_type_changed_signal.connect(self.on_glue_type_changed)
             # Replace the last widget in the layout (the placeholder) with the real widget
             layout = self.layout()
             old_content = layout.itemAt(layout.count() - 1).widget()
@@ -39,3 +40,9 @@ class DashboardAppWidget(AppWidget):
     def onLogOut(self):
         print("Logout requested from Dashboard")
         self.LOGOUT_REQUEST.emit()
+
+    def on_glue_type_changed(self, index,glue_type):
+        print(f"Glue type of {index} changed to: {glue_type} ")
+        from GlueDispensingApplication.tools.GlueCell import GlueCellsManagerSingleton
+        manager = GlueCellsManagerSingleton.get_instance()
+        manager.updateGlueTypeById(index,glue_type)
