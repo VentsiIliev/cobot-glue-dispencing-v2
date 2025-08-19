@@ -92,6 +92,7 @@ CAMERA_ACTION_RAW_MODE_ON = "camera/rawModeOn"            # Enable raw image mod
 CAMERA_ACTION_RAW_MODE_OFF = "camera/rawModeOff"
 CAMERA_ACTION_CALIBRATE = "camera/calibrate"
 CAMERA_ACTION_TEST_CALIBRATION = "camera/testCalibration"  # Test camera calibration
+CAMERA_ACTION_SAVE_WORK_AREA_POINTS = "camera/saveWorkAreaPoints"  # Save work area points for camera
 
 SETTINGS_ROBOT_GET = "settings/robot/get"
 SETTINGS_ROBOT_SET = "settings/robot/set"

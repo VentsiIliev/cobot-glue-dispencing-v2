@@ -7,7 +7,8 @@ from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QPropertyAnimation, QEasingCurv
 from PyQt6.QtGui import QPainter, QColor, QFont, QLinearGradient
 from enum import Enum
 from API.MessageBroker import MessageBroker
-
+from pl_gui.customWidgets.LanguageSelectorWidget import LanguageSelectorWidget
+from API.MessageBroker import MessageBroker
 
 class MachineState(Enum):
     STOPPED = "STOPPED"
@@ -112,6 +113,7 @@ class MachineToolbar(QWidget):
 
     def __init__(self):
         super().__init__()
+        self.broker = MessageBroker()
         self.current_state = MachineState.STOPPED
         self.setup_ui()
         self.setup_timer()
@@ -158,18 +160,23 @@ class MachineToolbar(QWidget):
 
         # Spacer
         layout.addStretch()
+        # Language Selector (centered)
+        self.language_selector = LanguageSelectorWidget()
+        self.language_selector.languageChanged.connect(self.handle_language_change)
+        self.language_selector.setFixedWidth(200)
+        layout.addWidget(self.language_selector)
         # New text label between indicators and buttons
-        self.info_label = QLabel("Machine Info")
-        self.info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.info_label.setFont(QFont("Roboto", 9, QFont.Weight.Normal))
-        self.info_label.setStyleSheet("""
-            background: #E8DEF8;
-            color: #6750A4;
-            border-radius: 8px;
-            padding: 2px 8px;
-        """)
-        layout.addWidget(self.info_label)
-        self.info_label.hide()
+        # self.info_label = QLabel("Machine Info")
+        # self.info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # self.info_label.setFont(QFont("Roboto", 9, QFont.Weight.Normal))
+        # self.info_label.setStyleSheet("""
+        #     background: #E8DEF8;
+        #     color: #6750A4;
+        #     border-radius: 8px;
+        #     padding: 2px 8px;
+        # """)
+        # layout.addWidget(self.info_label)
+        # self.info_label.hide()
 
         # Spacer
         layout.addStretch()
@@ -188,6 +195,10 @@ class MachineToolbar(QWidget):
         self.pause_btn.clicked.connect(self.pause_machine)
         self.stop_btn.clicked.connect(self.stop_machine)
         self.clean_btn.clicked.connect(self.clean_nozzle)
+
+    def handle_language_change(self,message):
+        self.broker.publish("Language","Change")
+        # print("Language changed")
 
     def update_info_label_threadsafe(self, message):
         """Thread-safe version that emits signal instead of directly updating GUI"""

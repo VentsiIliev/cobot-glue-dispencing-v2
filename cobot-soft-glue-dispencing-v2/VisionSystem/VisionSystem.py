@@ -25,6 +25,9 @@ PERSPECTIVE_MATRIX_PATH = os.path.join(os.path.dirname(__file__), 'calibration',
 CAMERA_TO_ROBOT_MATRIX_PATH = os.path.join(os.path.dirname(__file__), 'calibration', 'cameraCalibration', 'storage',
                                            'calibration_result', 'cameraToRobotMatrix.npy')
 
+WORK_AREA_POINTS_PATH = os.path.join(os.path.dirname(__file__), 'calibration', 'cameraCalibration', 'storage',
+                                        'calibration_result', 'workAreaPoints.npy')
+
 CONFIG_FILE_PATH = os.path.join(os.path.dirname(__file__), 'config.json')
 
 
@@ -84,6 +87,7 @@ class VisionSystem:
         self.__loadPerspectiveMatrix()
         self.__loadCameraCalibrationData()
         self.__loadCameraToRobotMatrix()
+        self.__loadWorkAreaPoints()
 
         if self.cameraData is None or self.perspectiveMatrix is None or self.cameraToRobotMatrix is None:
             self.isSystemCalibrated = False
@@ -161,13 +165,15 @@ class VisionSystem:
             filteredContours = [cnt for cnt in approxContours if cv2.contourArea(cnt) > self.camera_settings.get_min_contour_area()]
             filteredContours = [cnt for cnt in filteredContours if cv2.contourArea(cnt) < self.camera_settings.get_max_contour_area()]
             # Cache centroids once
+
             contours_with_centroids = []
             for cnt in filteredContours:
                 centroid = Contouring.calculateCentroid(cnt)
                 if centroid is not None:
-                    contours_with_centroids.append((cnt, centroid))
+                    if cv2.pointPolygonTest(self.work_area_polygon, (centroid[0], centroid[1]), False) >= 0:
+                        contours_with_centroids.append((cnt, centroid))
 
-            if not contours_with_centroids:
+            if not contours_with_centroids and len(contours_with_centroids) == 0:
                 return None, self.correctedImage, None
 
             # Squared distance function
@@ -217,6 +223,10 @@ class VisionSystem:
             self.camera_settings.get_camera_width(),
             self.camera_settings.get_camera_height()
         )
+
+
+
+
         # imageParam = cv2.warpPerspective(
         #     imageParam,
         #     self.perspectiveMatrix,
@@ -361,6 +371,26 @@ class VisionSystem:
         except Exception as e:
             return False, f"Error updating settings: {str(e)}"
 
+    def saveWorkAreaPoints(self,points):
+        """
+        Saves the work area points captured by the camera service.
+        """
+        # write the points into a json file
+        if points is None or len(points) == 0:
+            return False, "No points provided to save"
+
+        try:
+            points = np.array(points, dtype=np.float32)
+            np.save(WORK_AREA_POINTS_PATH, points)
+            self.workAreaPoints = points
+            self.work_area_polygon = np.array(self.workAreaPoints, dtype=np.int32).reshape((-1, 1, 2))
+
+            return True, "Work area points saved successfully"
+        except Exception as e:
+            self.logger.error(f"Error saving work area points: {str(e)}")
+            return False, f"Error saving work area points: {str(e)}"
+
+
     def detectArucoMarkers(self, flip=False, image=None):
         """
         Detect ArUco markers in the image.
@@ -370,8 +400,8 @@ class VisionSystem:
             flip = self.camera_settings.get_aruco_flip_image()
 
         # Check if ArUco detection is enabled
-        if not self.camera_settings.get_aruco_enabled():
-            return None, None, None
+        # if not self.camera_settings.get_aruco_enabled():
+        #     return None, None, None
 
         enableContourDrawingAfterDetection = self.camera_settings.get_draw_contours()
         if self.camera_settings.get_draw_contours():
@@ -393,6 +423,7 @@ class VisionSystem:
         arucoDetector = ArucoDetector(arucoDict=aruco_dict)
         try:
             arucoCorners, arucoIds = arucoDetector.detectAll(image)
+            print(f"Detected {len(arucoIds)} ArUco markers")
         except Exception as e:
             print(e)
             return None, None, None
@@ -498,6 +529,16 @@ class VisionSystem:
 
 
     """PRIVATE METHODS SECTION"""
+
+    def __loadWorkAreaPoints(self):
+        try:
+            self.workAreaPoints = np.load(WORK_AREA_POINTS_PATH)
+            self.work_area_polygon = np.array(self.workAreaPoints, dtype=np.int32).reshape((-1, 1, 2))
+            self.isSystemCalibrated = True
+        except FileNotFoundError:
+            self.workAreaPoints = None
+            self.isSystemCalibrated = False
+            self.logger.error(f"Work area points file not found at {WORK_AREA_POINTS_PATH}")
 
     def __loadCameraToRobotMatrix(self):
         try:

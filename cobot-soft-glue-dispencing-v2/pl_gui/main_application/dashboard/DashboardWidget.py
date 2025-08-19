@@ -1,35 +1,28 @@
-import sys
 import os
-import random
+import sys
 
-from datetime import datetime, timedelta
-
-from PyQt6.QtWidgets import (
-    QWidget, QGridLayout, QComboBox, QHBoxLayout, QLabel,
-    QVBoxLayout, QApplication, QSizePolicy, QFrame
-)
 from PyQt6.QtCore import (
     Qt, QPoint, pyqtSignal
 )
 from PyQt6.QtGui import (
     QFont, QColor
 )
+from PyQt6.QtWidgets import (
+    QWidget, QGridLayout, QComboBox, QHBoxLayout, QLabel,
+    QVBoxLayout, QApplication, QSizePolicy, QFrame
+)
+
 from API.MessageBroker import MessageBroker
 from pl_gui.CameraFeed import CameraFeed
-from pl_gui.dashboard.ProximitySensorCard import SensorCard
-from pl_gui.dashboard.WorkpiecesGraphCard import WorkpiecesGraphCard
-from pl_gui.main_application.dashboard.RobotTrajectoryWidget import SmoothTrajectoryWidget
-from pl_gui.specific.enums.GlueType import GlueType
-from pl_gui.dashboard.GlueMeterWidget import GlueMeterWidget
-from pl_gui.dashboard.GlueNozzleCard import GlueNozzleCard
-from pl_gui.dashboard.TrollyCard import TrollyCard
-from pl_gui.dashboard.TogglePanel import TogglePanel
+from pl_gui.customWidgets.FloatingToggleButton import FloatingToggleButton
 from pl_gui.dashboard.DraggableCard import DraggableCard
 from pl_gui.dashboard.EmptyPlaceholder import EmptyPlaceholder
-from pl_gui.dashboard.GlueMeterCard import GlueSetpointFields
+from pl_gui.dashboard.GlueMeterWidget import GlueMeterWidget
+from pl_gui.dashboard.TogglePanel import TogglePanel
 from pl_gui.main_application.dashboard.MachineIndicatorsWidget import MachineToolbar
-from pl_gui.SessionInfoWidget import SessionInfoWidget
-from pl_gui.customWidgets.FloatingToggleButton import FloatingToggleButton
+from pl_gui.main_application.dashboard.RobotTrajectoryWidget import SmoothTrajectoryWidget
+from pl_gui.specific.enums.GlueType import GlueType
+from pl_gui.main_application.dashboard.GlueMeterCard import GlueMeterCard
 
 RESOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "resources")
 HIDE_CAMERA_FEED_ICON_PATH = os.path.join(RESOURCE_DIR, "pl_ui_icons", "HIDE_CAMERA_FEED.png")
@@ -38,7 +31,6 @@ CAMERA_PREVIEW_PLACEHOLDER = os.path.join(RESOURCE_DIR, "pl_ui_icons", "Backgrou
 
 class CardContainer(QWidget):
     select_card_signal = pyqtSignal(object)
-
     def __init__(self, columns=3, rows=2):
         super().__init__()
         self.columns = columns
@@ -324,6 +316,7 @@ class CardContainer(QWidget):
 
 class DashboardWidget(QWidget):
     start_requested = pyqtSignal()
+    glue_type_changed_signal = pyqtSignal(str)
 
     def __init__(self, updateCameraFeedCallback, parent=None):
         super().__init__(parent)
@@ -354,7 +347,7 @@ class DashboardWidget(QWidget):
         machine_toolbar_layout = QVBoxLayout(machine_toolbar_frame)
         machine_toolbar_layout.setContentsMargins(5, 5, 5, 5)
         machine_toolbar_layout.addWidget(machine_toolbar)
-        main_layout.addWidget(machine_toolbar_frame)
+        # main_layout.addWidget(machine_toolbar_frame)
 
         # --- Top horizontal layout: Toolbar + Camera ---
         top_layout = QHBoxLayout()
@@ -398,30 +391,30 @@ class DashboardWidget(QWidget):
         # --- Create trajectory widget with FIXED size policy ---
         self.trajectory_widget = SmoothTrajectoryWidget(image_width=640, image_height=360)
         # CRITICAL: Set fixed size policy to prevent the widget from expanding
-        self.trajectory_widget.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.trajectory_widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
 
-        # Create trajectory frame with FIXED size policy
-        trajectory_frame = QFrame()
-        trajectory_frame.setStyleSheet("""
-            QFrame {
-                background: #FFFBFE;
-                border: 1px solid #E7E0EC;
-                border-radius: 12px;
-                padding: 2px;
-            }
-        """)
-        # CRITICAL: Set fixed size policy for the frame too
-        trajectory_frame.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-
-        # Calculate exact frame size based on trajectory widget + padding
-        frame_width = 640 + 16  # widget width + 8px padding on each side
-        frame_height = 360 + 80 + 16  # widget height + metrics height + padding
-        trajectory_frame.setFixedSize(frame_width, frame_height)
-
-        trajectory_layout = QVBoxLayout(trajectory_frame)
-        trajectory_layout.setContentsMargins(8, 8, 8, 8)
+        # # Create trajectory frame with FIXED size policy
+        # trajectory_frame = QFrame()
+        # trajectory_frame.setStyleSheet("""
+        #     QFrame {
+        #         background: #FFFBFE;
+        #         border: 1px solid #E7E0EC;
+        #         border-radius: 12px;
+        #         padding: 2px;
+        #     }
+        # """)
+        # # CRITICAL: Set fixed size policy for the frame too
+        # trajectory_frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        #
+        # # Calculate exact frame size based on trajectory widget + padding
+        # frame_width = 640 + 16  # widget width + 8px padding on each side
+        # frame_height = 360 + 80 + 16  # widget height + metrics height + padding
+        # trajectory_frame.setFixedSize(frame_width, frame_height)
+        #
+        trajectory_layout = QVBoxLayout(self.trajectory_widget)
+        trajectory_layout.setContentsMargins(0, 0, 0, 0)
         trajectory_layout.setSpacing(0)
-        trajectory_layout.addWidget(self.trajectory_widget)
+        trajectory_layout.addWidget(self.trajectory_widget,alignment=Qt.AlignmentFlag.AlignCenter)
 
         # Subscribe to message broker
         broker = MessageBroker()
@@ -430,9 +423,9 @@ class DashboardWidget(QWidget):
         # broker.subscribe("robot/trajectory/newTrail", self.trajectory_widget.start_new_trail)
 
         # Place trajectory widget in the first cell (index 0) - spans 2 columns
-        self.left_grid_container.layout.addWidget(trajectory_frame, 0, 0, 1, 2)  # row=0, col=0, rowspan=1, colspan=2
-        self.left_grid_container.grid_items[0] = trajectory_frame
-        self.left_grid_container.grid_items[1] = trajectory_frame  # Same widget occupies both cells
+        self.left_grid_container.layout.addWidget(self.trajectory_widget, 0, 0, 1, 2)  # row=0, col=0, rowspan=1, colspan=2
+        self.left_grid_container.grid_items[0] = self.trajectory_widget
+        self.left_grid_container.grid_items[1] = self.trajectory_widget  # Same widget occupies both cells
 
         # Add placeholder frames for remaining cells (starting from index 2)
         for i in range(2, 6):
@@ -572,11 +565,12 @@ class DashboardWidget(QWidget):
         glue_type_combo.addItems([glue_type.value for glue_type in GlueType])
         glue_type_combo.setCurrentText("Type A")
         glue_type_combo.setObjectName(f"glue_combo_{index}")
-
+        glue_type_combo.currentTextChanged.connect(lambda value: self.glue_type_changed_signal.emit(value))
         # Create the card first
         card = DraggableCard(label_text, [glue_type_combo, meter],
                              remove_callback=self.remove_card_and_restore,
                              container=self.shared_card_container)
+
         card.glue_type_combo = glue_type_combo
 
         # Apply styling AFTER the card is created to override any inherited styles
@@ -587,7 +581,7 @@ class DashboardWidget(QWidget):
         glue_type_combo.setStyleSheet(f"""
             QComboBox#glue_combo_{index} {{
                 background: {base_color};
-                color: #FFFFFF;
+                color: black;
                 border: none;
                 border-radius: 14px;
                 padding: 4px 12px;

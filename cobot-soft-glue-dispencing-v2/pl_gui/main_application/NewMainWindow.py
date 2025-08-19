@@ -2,8 +2,8 @@ import os
 import sys
 
 from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QGridLayout, QSizePolicy,
-                             QStackedWidget)
-from PyQt6.QtCore import Qt
+                             QStackedWidget, QFrame)
+from PyQt6.QtCore import Qt, pyqtSignal
 
 from API.shared.settings.conreateSettings.CameraSettings import CameraSettings
 from API.shared.settings.conreateSettings.RobotSettings import RobotSettings
@@ -11,6 +11,7 @@ from API.shared.user.CSVUsersRepository import CSVUsersRepository
 from API.shared.user.Session import SessionManager
 from API.shared.user.User import UserField, User
 from API.shared.user.UserService import UserService
+from pl_gui.main_application.dashboard.MachineIndicatorsWidget import MachineToolbar
 from pl_gui.main_application.helpers.Endpoints import *
 from pl_gui.main_application.login.LoginWindow import LoginWindow
 from pl_gui.main_application.Folder import Folder
@@ -46,7 +47,7 @@ USER_MANAGEMENT_ICON = os.path.join(RESOURCES_DIR, "administration/user_manageme
 
 class ApplicationDemo(QWidget):
     """Demo application showing the Android folder widget with QStackedWidget for app management"""
-
+    start_requested = pyqtSignal()
     def __init__(self, controller):
         super().__init__()
         self.controller = controller
@@ -110,6 +111,9 @@ class ApplicationDemo(QWidget):
             # app_widget = AppWidget(app_name)
         elif app_name == "Start":
             app_widget = DashboardAppWidget(controller=self.controller)
+            self.header.start_btn.setVisible(True)
+            self.header.pause_btn.setVisible(True)
+            self.header.clean_btn.setVisible(True)
             app_widget.start_requested.connect(lambda: self.controller.handle(START))
             app_widget.LOGOUT_REQUEST.connect(self.onLogout)
         elif app_name == "Gallery":
@@ -181,6 +185,10 @@ class ApplicationDemo(QWidget):
             for folder in self.folders:
                 folder.set_grayed_out(False)
 
+            self.header.start_btn.setVisible(False)
+            self.header.pause_btn.setVisible(False)
+            self.header.clean_btn.setVisible(False)
+
     def setup_ui(self):
         self.setWindowTitle("Android-Style App Folder Demo with QStackedWidget")
 
@@ -202,15 +210,29 @@ class ApplicationDemo(QWidget):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.header = Header(
-            screen_width=self.width(),
-            screen_height=self.height(),
-            toggle_menu_callback=None,
-            dashboard_button_callback=None
-        )
-        self.header.menu_button.hide()
-        self.header.dashboardButton.hide()
-        main_layout.addWidget(self.header)
+        # --- Machine indicator toolbar at the very top ---
+        self.header = MachineToolbar()
+        self.header.start_request.connect(self.start_requested.emit)
+        self.header.start_btn.setVisible(False)
+        self.header.pause_btn.setVisible(False)
+        self.header.clean_btn.setVisible(False)
+
+        machine_toolbar_frame = QFrame()
+        machine_toolbar_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        machine_toolbar_frame.setStyleSheet("background-color: #FFFBFE; border: 1px solid #E7E0EC;")
+        machine_toolbar_layout = QVBoxLayout(machine_toolbar_frame)
+        machine_toolbar_layout.setContentsMargins(5, 5, 5, 5)
+        machine_toolbar_layout.addWidget(self.header)
+        main_layout.addWidget(machine_toolbar_frame)
+        # self.header = Header(
+        #     screen_width=self.width(),
+        #     screen_height=self.height(),
+        #     toggle_menu_callback=None,
+        #     dashboard_button_callback=None
+        # )
+        # self.header.menu_button.hide()
+        # self.header.dashboardButton.hide()
+        # main_layout.addWidget(self.header)
 
         # Create the stacked widget
         self.stacked_widget = QStackedWidget()

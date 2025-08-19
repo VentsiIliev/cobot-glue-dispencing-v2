@@ -1,3 +1,4 @@
+from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget
 
 from API.MessageBroker import MessageBroker
@@ -17,11 +18,6 @@ class GlueSetpointFields(QWidget):
         self.g_per_m_input = QLineEdit()
         self.g_per_sqm_input = QLineEdit()
 
-        self.g_per_m_input.setPlaceholderText("g/m")
-        self.g_per_sqm_input.setPlaceholderText("g/m²")
-
-        self.layout.addRow("g/m:", self.g_per_m_input)
-        self.layout.addRow("g/m²:", self.g_per_sqm_input)
 
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
 
@@ -38,6 +34,7 @@ from PyQt6.QtWidgets import QFrame
 
 
 class GlueMeterCard(QFrame):
+    glue_type_changed = pyqtSignal(str)
     def __init__(self, label_text, index):
         super().__init__()
         self.label_text = label_text
@@ -55,6 +52,7 @@ class GlueMeterCard(QFrame):
         self.glue_type_combo = QComboBox()
         self.glue_type_combo.addItems([GlueType.TypeA.value, GlueType.TypeB.value, GlueType.TypeC.value])
         self.glue_type_combo.setCurrentText("Type A")
+        self.glue_type_combo.currentTextChanged.connect(lambda value: self.glue_type_changed.emit(value))
 
         # Add hover styling to the combo box and dropdown items
         self.glue_type_combo.setStyleSheet("""

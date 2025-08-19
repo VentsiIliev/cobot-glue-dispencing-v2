@@ -183,50 +183,22 @@ class SmoothTrajectoryWidget(QWidget):
     def init_ui(self):
         self.setWindowTitle("Trajectory Tracker")
 
-        # Calculate exact widget size based on image dimensions
-        widget_width = self.image_width + 32  # 24 margins + 8 card padding
-        widget_height = self.image_height + 80  # Metrics height + margins + card padding
-
-        self.setFixedSize(widget_width, widget_height)
-
-        # Set modern background
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #FAFAFA;
-                font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-            }
-        """)
-
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(12, 12, 12, 12)
-        main_layout.setSpacing(8)
-
-        # Compact metrics at top
-        metrics_card = CompactCard()
-        metrics_layout = QHBoxLayout(metrics_card)
-        metrics_layout.setContentsMargins(0, 0, 0, 0)
-        metrics_layout.setSpacing(16)
-
-        # Estimated Time metric (compact horizontal layout)
+        # Metrics widgets
         self.estimated_metric = CompactTimeMetric("Est. Time", "0.00 s", "#1976D2")
-
-        # Time Left metric (compact horizontal layout)
         self.time_left_metric = CompactTimeMetric("Time Left", "0.00 s", "#388E3C")
 
+        metrics_layout = QHBoxLayout()
+        metrics_layout.setSpacing(16)
         metrics_layout.addWidget(self.estimated_metric)
         metrics_layout.addWidget(self.time_left_metric)
         metrics_layout.addStretch()
 
-        main_layout.addWidget(metrics_card)
+        metrics_widget = QWidget()
+        metrics_widget.setLayout(metrics_layout)
 
-        # Camera view with fixed size
-        camera_card = CompactCard()
-        camera_layout = QVBoxLayout(camera_card)
-        camera_layout.setContentsMargins(4, 4, 4, 4)
-
+        # Image
         self.image_label = QLabel()
         self.image_label.setFixedSize(self.image_width, self.image_height)
-
         self.image_label.setStyleSheet("""
             QLabel {
                 background-color: #F5F5F5;
@@ -235,12 +207,34 @@ class SmoothTrajectoryWidget(QWidget):
             }
         """)
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.image_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        camera_layout.addWidget(self.image_label)
 
-        camera_layout.addStretch()
-        main_layout.addWidget(camera_card)
-        main_layout.addStretch()
+        # Container layout
+        container_layout = QVBoxLayout()
+        container_layout.setSpacing(12)
+        container_layout.setContentsMargins(12, 12, 12, 12)
+        container_layout.addWidget(metrics_widget)
+        container_layout.addWidget(self.image_label)
+
+        # Container frame
+        container_frame = QFrame()
+        container_frame.setLayout(container_layout)
+        container_frame.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border-radius: 8px;
+                border: 1px solid #E0E0E0;
+            }
+        """)
+
+        # Main layout
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.addWidget(container_frame)
+
+        # === Dynamically compute total widget size ===
+        total_width = container_frame.sizeHint().width() + main_layout.contentsMargins().left() + main_layout.contentsMargins().right()
+        total_height = container_frame.sizeHint().height() + main_layout.contentsMargins().top() + main_layout.contentsMargins().bottom()
+        self.setFixedSize(total_width, total_height)
 
     def load_placeholder_image(self):
         """Load and set placeholder image"""
@@ -285,8 +279,9 @@ class SmoothTrajectoryWidget(QWidget):
             return
 
         x, y = message.get("x", 0), message.get("y", 0)
-        screen_x = int(x + self.image_width // 2)
-        screen_y = int(y + self.image_height // 2)
+        # print(f"Received trajectory point: ({x}, {y})")
+        screen_x = int(x)
+        screen_y = int(y)
 
         self.last_position = self.current_position
         self.current_position = (screen_x, screen_y)
@@ -318,13 +313,13 @@ class SmoothTrajectoryWidget(QWidget):
 
         self.current_frame = self.base_frame.copy()
 
-        # Clean up old trajectory points
-        current_time = time.time()
-        while self.trajectory_points and current_time - self.trajectory_points[0][2] > 10:
-            self.trajectory_points.popleft()
-
-        while len(self.trajectory_points) > self.trail_length:
-            self.trajectory_points.popleft()
+        # # Clean up old trajectory points
+        # current_time = time.time()
+        # while self.trajectory_points and current_time - self.trajectory_points[0][2] > 10:
+        #     self.trajectory_points.popleft()
+        #
+        # while len(self.trajectory_points) > self.trail_length:
+        #     self.trajectory_points.popleft()
 
         self._draw_smooth_trail()
 
@@ -342,7 +337,7 @@ class SmoothTrajectoryWidget(QWidget):
     def _draw_logo_at_position(self):
         """Draw logo at current position with improved error handling"""
         if self.logo_icon is None:
-            print("Logo icon is None, drawing fallback circle")
+            # print("Logo icon is None, drawing fallback circle")
             # Fallback: draw a simple circle if logo is not available
             x, y = self.current_position
             if 0 <= x < self.image_width and 0 <= y < self.image_height:
@@ -357,15 +352,15 @@ class SmoothTrajectoryWidget(QWidget):
         x1, y1 = x - w // 2, y - h // 2
         x2, y2 = x1 + w, y1 + h
 
-        print(f"Drawing logo at position ({x}, {y}), logo size: {w}x{h}, bounds: ({x1},{y1}) to ({x2},{y2})")
-        print(f"Frame size: {self.current_frame.shape[1]}x{self.current_frame.shape[0]}")
+        # print(f"Drawing logo at position ({x}, {y}), logo size: {w}x{h}, bounds: ({x1},{y1}) to ({x2},{y2})")
+        # print(f"Frame size: {self.current_frame.shape[1]}x{self.current_frame.shape[0]}")
 
         # Check bounds with some tolerance
         if x1 >= 0 and y1 >= 0 and x2 <= self.current_frame.shape[1] and y2 <= self.current_frame.shape[0]:
             try:
                 if len(self.logo_icon.shape) == 3 and self.logo_icon.shape[2] == 4:
                     # Logo has alpha channel
-                    print("Drawing logo with alpha blending")
+                    # print("Drawing logo with alpha blending")
                     alpha_logo = self.logo_icon[:, :, 3] / 255.0
                     alpha_bg = 1.0 - alpha_logo
 
@@ -374,19 +369,19 @@ class SmoothTrajectoryWidget(QWidget):
                                 alpha_logo * self.logo_icon[:, :, c] +
                                 alpha_bg * self.current_frame[y1:y2, x1:x2, c]
                         ).astype(np.uint8)
-                    print("Alpha blending completed")
+                    # print("Alpha blending completed")
                 else:
                     # No alpha channel, direct paste
-                    print("Drawing logo without alpha")
+                    # print("Drawing logo without alpha")
                     self.current_frame[y1:y2, x1:x2] = self.logo_icon
-                    print("Direct paste completed")
+                    # print("Direct paste completed")
 
             except Exception as e:
-                print(f"Error drawing logo: {e}")
+                # print(f"Error drawing logo: {e}")
                 # Fallback to circle
                 cv2.circle(self.current_frame, (x, y), 15, (0, 255, 0), 3)
         else:
-            print(f"Logo position out of bounds, drawing at edge")
+            # print(f"Logo position out of bounds, drawing at edge")
             # Still draw something visible at the edge
             safe_x = max(15, min(x, self.image_width - 15))
             safe_y = max(15, min(y, self.image_height - 15))
@@ -547,12 +542,6 @@ class TestWindow(QWidget):
         layout = QVBoxLayout()
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(4)
-
-        title = QLabel("Trajectory Tracker")
-        title.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet("color: #424242; margin: 4px;")
-        layout.addWidget(title)
 
         self.camera_widget = SmoothTrajectoryWidget(image_width=1280, image_height=720)
         self.camera_widget.set_image(np.zeros((1280, 720, 3), dtype=np.uint8))

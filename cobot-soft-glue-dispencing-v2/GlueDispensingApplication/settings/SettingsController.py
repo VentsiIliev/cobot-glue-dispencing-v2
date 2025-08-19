@@ -1,9 +1,11 @@
-from GlueDispensingApplication.vision.VisionService import VisionServiceSingleton
-from GlueDispensingApplication.settings.SettingsService import SettingsService
-from API.Request import Request
-from API.Response import Response
-from API import Constants
 import traceback
+
+from API import Constants
+from API.Response import Response
+from GlueDispensingApplication.settings.SettingsService import SettingsService
+from GlueDispensingApplication.vision.VisionService import VisionServiceSingleton
+
+
 class SettingsController():
     """
      Controller responsible for handling GET and POST requests related to system settings.

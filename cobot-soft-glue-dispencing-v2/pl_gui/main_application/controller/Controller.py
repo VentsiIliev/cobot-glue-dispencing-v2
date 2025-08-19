@@ -37,6 +37,7 @@ class Controller:
             CALIBRATE_CAMERA: self.handleCalibrateCamera,
             CALIBRATE_ROBOT: self.handleCalibrateRobot,
             TEST_CALIBRATION: self.handleTestCalibration,
+            SAVE_WORK_AREA_POINTS: self.handleSaveWorkAreaPoints,
             HOME_ROBOT: self.homeRobot,
             GO_TO_CALIBRATION_POS:self.handleMoveToCalibrationPos,
             JOG_ROBOT: self.handleJog,
@@ -161,6 +162,13 @@ class Controller:
             return False, response.message
 
         return True, response.message
+
+    def handleSaveWorkAreaPoints(self,points):
+        print("handleSaveWorkAreaPoints Saving work area points:", points)
+        request = Constants.CAMERA_ACTION_SAVE_WORK_AREA_POINTS
+
+        self.requestSender.sendRequest(request, data=points)
+
 
     def handleTestCalibration(self):
         request = Constants.CAMERA_ACTION_TEST_CALIBRATION

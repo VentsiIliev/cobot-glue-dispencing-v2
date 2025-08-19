@@ -39,7 +39,7 @@ class CameraSystemController():
              """
         self.cameraService = cameraService
 
-    def handle(self, request, parts):
+    def handle(self, request, parts,data=None):
         command = parts[1]
         if command == "getLatestFrame":
             return self.handleLatestFrame()
@@ -57,8 +57,29 @@ class CameraSystemController():
             return  self.captureCalibrationImage()
         elif command == "testCalibration":
             return self.cameraService.testCalibration()
+        elif command == "save_work_area_points":
+            print("Handling save work area points request")
+            print("Request",request)
+            print("Parts",parts)
+            points = request.get("data", None)
+            return  self.saveWorkAreaPoints(points)
 
 
+    def saveWorkAreaPoints(self,points):
+        """
+        Saves the work area points captured by the camera service.
+
+        This method retrieves the work area points from the camera service and saves them.
+        If successful, it returns a success response; otherwise, it returns an error response.
+
+        Returns:
+            dict: A dictionary containing the status and message of the operation.
+        """
+        print("saveWorkAreaPoints Saving work area points:", points)
+        result, message = self.cameraService.saveWorkAreaPoints(points)
+        if not result:
+            return Response(Constants.RESPONSE_STATUS_ERROR, message=message).to_dict()
+        return Response(Constants.RESPONSE_STATUS_SUCCESS, message=message).to_dict()
 
     def captureCalibrationImage(self):
         result,message =  self.cameraService.captureCalibrationImage()

@@ -47,17 +47,6 @@ class RequestHandler:
         print(resource)  # Output: ['robot', 'jog', 'X', 'Minus']
         return parts
 
-    def newHandleRequest(self,request):
-        request = Request.from_dict(request)
-        parts = self._parseRequest(request.action)
-
-        resource  = parts[0]
-        if resource == Constants.REQUEST_RESOURCE_ROBOT.lower():
-            self.robotController.handle(request,parts)
-        elif resource == Constants.REQUEST_RESOURCE_CAMERA.lower():
-            pass
-        else:
-            pass
 
     def handleRequest(self, request: dict):
         """

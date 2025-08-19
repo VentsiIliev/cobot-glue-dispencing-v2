@@ -206,7 +206,10 @@ class GlueSprayingApplication:
                 # resize to (image_width=640, image_height=360)
                 frame = cv2.resize(frame, (640, 360))
                 broker.publish("robot/trajectory/updateImage", {"image": frame})
+                print("Final paths sent to robot:", len(finalPaths))
+
                 self.robotService.traceContours(finalPaths)
+
             else:
                 print("No valid paths generated")
 
@@ -239,7 +242,6 @@ class GlueSprayingApplication:
 
             if finalPaths:
                 self.robotService.traceContours(finalPaths)
-
         self.robotService.moveToCalibrationPosition()
         self.robotService.moveToStartPosition()
         return True, "Success"

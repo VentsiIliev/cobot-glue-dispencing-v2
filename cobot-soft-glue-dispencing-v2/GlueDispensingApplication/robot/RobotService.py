@@ -489,9 +489,9 @@ class RobotService:
                     self.robot.moveL(point, ROBOT_TOOL, ROBOT_USER, vel=velocity, acc=acceleration, blendR=1)
                     # self.adjustPumpSpeedWhileRobotIsMoving(service, glue_speed_coefficient, glueType, pumpSpeed, point,
                     #                                        reach_end_threshold)
-                    self._waitForRobotToReachPosition(point, reach_end_threshold, 0.1)
+                    # self._waitForRobotToReachPosition(point, reach_end_threshold, 0.1)
                 # service.motorOff(glueType, speedReverse=speedReverse, delay=reverseDuration)
-                self.positionFetcher.trajectoryUpdate=False
+                # self.positionFetcher.trajectoryUpdate=False
                 CURRENT_STATE = TRANSITION_BETWEEN_PATHS_STATE
 
             elif CURRENT_STATE == TRANSITION_BETWEEN_PATHS_STATE:
@@ -754,12 +754,13 @@ class RobotService:
             acceleration (float): Acceleration
             waitToReachPosition (bool): If True, waits for robot to reach position
         """
-        self.robot.moveCart(position, tool, workpiece, vel=velocity, acc=acceleration)
+        ret = self.robot.moveCart(position, tool, workpiece, vel=velocity, acc=acceleration)
 
         if waitToReachPosition:  # TODO comment out when using test robot
             self._waitForRobotToReachPosition(position, 1, delay=0.1)
 
         # self.robot.moveL(position, tool, workpieces, vel=velocity, acc=acceleration,blendR=20)
+        return ret
 
     def moveToHeightMeasurePosition(self, centroid, motionParams):
         """THIS FUNCTION WAS USET WITH THE LASER"""

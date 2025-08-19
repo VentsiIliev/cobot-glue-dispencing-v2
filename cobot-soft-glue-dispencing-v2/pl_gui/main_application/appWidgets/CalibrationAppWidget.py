@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import QWidget
 
 from API.MessageBroker import MessageBroker
 from pl_gui.Endpoints import WORPIECE_GET_ALL, CALIBRATE, GO_TO_CALIBRATION_POS, RAW_MODE_ON, CALIBRATE_CAMERA, \
-    CAPTURE_CALIBRATION_IMAGE, JOG_ROBOT, CALIBRATE_ROBOT, TEST_CALIBRATION
+    CAPTURE_CALIBRATION_IMAGE, JOG_ROBOT, CALIBRATE_ROBOT, TEST_CALIBRATION, SAVE_WORK_AREA_POINTS
 from pl_gui.main_application.appWidgets.AppWidget import AppWidget
 from pl_gui.main_application.helpers.Endpoints import UPDATE_CAMERA_FEED, HOME_ROBOT, SAVE_ROBOT_CALIBRATION_POINT
 
@@ -51,6 +51,7 @@ class ServiceCalibrationAppWidget(AppWidget):
             self.content_layout.capture_image_requested.connect(lambda: self.controller.handle(CAPTURE_CALIBRATION_IMAGE))
             self.content_layout.auto_calibrate_requested.connect(lambda: self.controller.handle(CALIBRATE))
             self.content_layout.test_calibration_requested.connect(lambda: self.controller.handle(TEST_CALIBRATION))
+            self.content_layout.save_work_area_requested.connect(lambda points: self.controller.handle(SAVE_WORK_AREA_POINTS,points))
 
             # self.content_layout.start_calibration_requested.connect(lambda: self.controller.handle(CALIBRATE))
 

@@ -56,6 +56,9 @@ class RequestHandler:
         parts = self._parseRequest(request)
         resource = parts[0]
 
+        # if len(parts) >=1 and parts[1] == "saveWorkAreaPoints":
+        #     return self.handleSaveWorkAreaPoints(data)
+
         if resource in self.resource_dispatch:
             return self.resource_dispatch[resource](parts, request, data)
 
@@ -73,6 +76,8 @@ class RequestHandler:
 
         raise ValueError(f"Invalid command: {request}")
 
+    def handleSaveWorkAreaPoints(self, points):
+        self.cameraSystemController.saveWorkAreaPoints(points)
     def handleExecuteFromGallery(self,workpiece):
         self.controller.handleExecuteFromGallery(workpiece)
 
@@ -113,12 +118,12 @@ class RequestHandler:
             return self._handleRobotCalibration()
         return self.robotController.handle(request, parts)
 
-    def _handleCamera(self, parts, request, _):
+    def _handleCamera(self, parts, request, data):
         command = parts[1] if len(parts) > 1 else None
         if command == "calibrate":
             return self._handleCameraCalibration()
 
-        response =  self.cameraSystemController.handle(request, parts)
+        response =  self.cameraSystemController.handle(request, parts,data)
         return response
 
     def _handleSettings(self, parts, request, data):
