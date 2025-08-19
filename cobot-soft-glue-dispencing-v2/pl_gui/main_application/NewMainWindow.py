@@ -114,6 +114,9 @@ class ApplicationDemo(QWidget):
             self.header.start_btn.setVisible(True)
             self.header.pause_btn.setVisible(True)
             self.header.clean_btn.setVisible(True)
+            self.header.state_label.setVisible(True)
+            for key, value in self.header.lights.items():
+                value.setVisible(True)
             app_widget.start_requested.connect(lambda: self.controller.handle(START))
             app_widget.LOGOUT_REQUEST.connect(self.onLogout)
         elif app_name == "Gallery":
@@ -188,6 +191,9 @@ class ApplicationDemo(QWidget):
             self.header.start_btn.setVisible(False)
             self.header.pause_btn.setVisible(False)
             self.header.clean_btn.setVisible(False)
+            self.header.state_label.setVisible(False)
+            for key, value in self.header.lights.items():
+                value.setVisible(False)
 
     def setup_ui(self):
         self.setWindowTitle("Android-Style App Folder Demo with QStackedWidget")
@@ -216,6 +222,9 @@ class ApplicationDemo(QWidget):
         self.header.start_btn.setVisible(False)
         self.header.pause_btn.setVisible(False)
         self.header.clean_btn.setVisible(False)
+        self.header.state_label.setVisible(False)
+        for key, value in self.header.lights.items():
+            value.setVisible(False)
 
         machine_toolbar_frame = QFrame()
         machine_toolbar_frame.setFrameShape(QFrame.Shape.StyledPanel)

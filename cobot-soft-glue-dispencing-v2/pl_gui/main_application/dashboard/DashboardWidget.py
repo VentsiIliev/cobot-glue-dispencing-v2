@@ -333,20 +333,20 @@ class DashboardWidget(QWidget):
         self.updateCameraFeedCallback = updateCameraFeedCallback
         self.shared_card_container = CardContainer(columns=1, rows=3)
         self.init_ui()
-        self.createSettingsTogglePanel()
+        # self.createSettingsTogglePanel()
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
 
-        # --- Machine indicator toolbar at the very top ---
-        machine_toolbar = MachineToolbar()
-        machine_toolbar.start_request.connect(self.start_requested.emit)
-        machine_toolbar_frame = QFrame()
-        machine_toolbar_frame.setFrameShape(QFrame.Shape.StyledPanel)
-        machine_toolbar_frame.setStyleSheet("background-color: #FFFBFE; border: 1px solid #E7E0EC;")
-        machine_toolbar_layout = QVBoxLayout(machine_toolbar_frame)
-        machine_toolbar_layout.setContentsMargins(5, 5, 5, 5)
-        machine_toolbar_layout.addWidget(machine_toolbar)
+        # # --- Machine indicator toolbar at the very top ---
+        # machine_toolbar = MachineToolbar()
+        # machine_toolbar.start_request.connect(self.start_requested.emit)
+        # machine_toolbar_frame = QFrame()
+        # machine_toolbar_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        # machine_toolbar_frame.setStyleSheet("background-color: #FFFBFE; border: 1px solid #E7E0EC;")
+        # machine_toolbar_layout = QVBoxLayout(machine_toolbar_frame)
+        # machine_toolbar_layout.setContentsMargins(5, 5, 5, 5)
+        # machine_toolbar_layout.addWidget(machine_toolbar)
         # main_layout.addWidget(machine_toolbar_frame)
 
         # --- Top horizontal layout: Toolbar + Camera ---
@@ -354,15 +354,15 @@ class DashboardWidget(QWidget):
         top_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         top_layout.setContentsMargins(0, 0, 0, 0)
 
-        toolbar_widget = QWidget()
-        self.toolbar_layout = QHBoxLayout(toolbar_widget)
-        self.toolbar_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        # toolbar_widget = QWidget()
+        # self.toolbar_layout = QHBoxLayout(toolbar_widget)
+        # self.toolbar_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
 
         self.card_selector = QComboBox()
         self.card_selector.addItem("Add Card")
 
-        self.createFlowingToggleButton()
-        top_layout.addWidget(toolbar_widget, 3)
+        # self.createFlowingToggleButton()
+        # top_layout.addWidget(toolbar_widget, 3)
 
         # --- Camera feed ---
         self.camera_feed = CameraFeed(updateCallback=self.updateCameraFeedCallback,
@@ -479,30 +479,30 @@ class DashboardWidget(QWidget):
         main_layout.addLayout(split_layout, stretch=1)
         self.setLayout(main_layout)
 
-    def createFlowingToggleButton(self):
-        self.floating_toggle_button = FloatingToggleButton(self, on_toggle_callback=self.toggle_settings_panel)
+    # def createFlowingToggleButton(self):
+    #     self.floating_toggle_button = FloatingToggleButton(self, on_toggle_callback=self.toggle_settings_panel)
 
-    def createSettingsTogglePanel(self):
-        """Create the settings toggle panel"""
-        available_labels = list(self.card_map.keys())
-        self.settings_panel = TogglePanel(available_labels, self, onToggleCallback=self.onSettingsToggle,
-                                          cameraToggleCallback=self.showCameraFeed)
-        self.settings_panel.setFixedWidth(300)
-        self.settings_panel.setGeometry(self.width(), 0, 300, self.height())
-        self.settings_panel.setStyleSheet("background-color: #ffffff; border-left: 1px solid #ccc;")
-        self.settings_panel.raise_()
-        self.settings_panel.hide()
-
-        # Set initial toggle states based on existing cards
-        existing_card_names = [card.objectName() for card in self.shared_card_container.get_cards()]
-
-        for label in available_labels:
-            is_active = label in existing_card_names
-            self.settings_panel.setToggleState(label, is_active)
-
-            # Add inactive cards to dropdown
-            if not is_active:
-                self.card_selector.addItem(label)
+    # def createSettingsTogglePanel(self):
+    #     """Create the settings toggle panel"""
+    #     available_labels = list(self.card_map.keys())
+    #     self.settings_panel = TogglePanel(available_labels, self, onToggleCallback=self.onSettingsToggle,
+    #                                       cameraToggleCallback=self.showCameraFeed)
+    #     self.settings_panel.setFixedWidth(300)
+    #     self.settings_panel.setGeometry(self.width(), 0, 300, self.height())
+    #     self.settings_panel.setStyleSheet("background-color: #ffffff; border-left: 1px solid #ccc;")
+    #     self.settings_panel.raise_()
+    #     self.settings_panel.hide()
+    #
+    #     # Set initial toggle states based on existing cards
+    #     existing_card_names = [card.objectName() for card in self.shared_card_container.get_cards()]
+    #
+    #     for label in available_labels:
+    #         is_active = label in existing_card_names
+    #         self.settings_panel.setToggleState(label, is_active)
+    #
+    #         # Add inactive cards to dropdown
+    #         if not is_active:
+    #             self.card_selector.addItem(label)
 
     def toggle_settings_panel(self):
         # Toggle the settings panel using its Drawer logic
@@ -518,38 +518,38 @@ class DashboardWidget(QWidget):
         direction = "▶" if self.settings_panel.is_open else "◀"
         self.floating_toggle_button.set_arrow_direction(direction)
 
-    def onSettingsToggle(self, label_text, state):
-        """Handle toggle state changes from the settings panel"""
-        print(f"Settings toggle for '{label_text}' changed to: {'ON' if state else 'OFF'}")
-
-        if state == False:  # Turning OFF - remove card
-            card = self.shared_card_container.find_card_by_name(label_text)
-            if card:
-                print(f"Removing card: {label_text}")
-                card.on_close()  # This will call remove_card_and_restore
-            else:
-                print(f"Card '{label_text}' not found for removal")
-
-        else:  # Turning ON - add card
-            # Check if card already exists
-            existing_card = self.shared_card_container.find_card_by_name(label_text)
-            if existing_card:
-                print(f"Card '{label_text}' already exists")
-                return
-
-            # Create and add the card
-            if label_text in self.card_map:
-                print(f"Adding card: {label_text}")
-                card = self.card_map[label_text]()
-                self.shared_card_container.add_card(card)
-
-                # Remove from dropdown if it exists there
-                for i in range(self.card_selector.count()):
-                    if self.card_selector.itemText(i) == label_text:
-                        self.card_selector.removeItem(i)
-                        break
-            else:
-                print(f"Card '{label_text}' not found in card_map")
+    # def onSettingsToggle(self, label_text, state):
+    #     """Handle toggle state changes from the settings panel"""
+    #     print(f"Settings toggle for '{label_text}' changed to: {'ON' if state else 'OFF'}")
+    #
+    #     if state == False:  # Turning OFF - remove card
+    #         card = self.shared_card_container.find_card_by_name(label_text)
+    #         if card:
+    #             print(f"Removing card: {label_text}")
+    #             card.on_close()  # This will call remove_card_and_restore
+    #         else:
+    #             print(f"Card '{label_text}' not found for removal")
+    #
+    #     else:  # Turning ON - add card
+    #         # Check if card already exists
+    #         existing_card = self.shared_card_container.find_card_by_name(label_text)
+    #         if existing_card:
+    #             print(f"Card '{label_text}' already exists")
+    #             return
+    #
+    #         # Create and add the card
+    #         if label_text in self.card_map:
+    #             print(f"Adding card: {label_text}")
+    #             card = self.card_map[label_text]()
+    #             self.shared_card_container.add_card(card)
+    #
+    #             # Remove from dropdown if it exists there
+    #             for i in range(self.card_selector.count()):
+    #                 if self.card_selector.itemText(i) == label_text:
+    #                     self.card_selector.removeItem(i)
+    #                     break
+    #         else:
+    #             print(f"Card '{label_text}' not found in card_map")
 
     def create_glue_card(self, index: int, label_text: str) -> DraggableCard:
         label = QLabel(label_text)
@@ -673,20 +673,20 @@ class DashboardWidget(QWidget):
         super().resizeEvent(event)
         new_width = self.width()
 
-        panel_width = self.settings_panel.width()
-        panel_visible = self.settings_panel.isVisible()
+        # panel_width = self.settings_panel.width()
+        # panel_visible = self.settings_panel.isVisible()
 
         # Adjust panel position
-        if panel_visible:
-            self.settings_panel.setGeometry(new_width - panel_width, 0, panel_width, self.height())
-            arrow_x = new_width - panel_width - self.floating_toggle_button.width()
-        else:
-            self.settings_panel.setGeometry(new_width, 0, panel_width, self.height())
-            arrow_x = new_width - self.floating_toggle_button.width()
+        # if panel_visible:
+        #     self.settings_panel.setGeometry(new_width - panel_width, 0, panel_width, self.height())
+        #     arrow_x = new_width - panel_width - self.floating_toggle_button.width()
+        # else:
+        #     self.settings_panel.setGeometry(new_width, 0, panel_width, self.height())
+        #     arrow_x = new_width - self.floating_toggle_button.width()
 
-        arrow_y = self.height() // 2 - self.floating_toggle_button.height() // 2
-        self.floating_toggle_button.move(arrow_x, arrow_y)
-        self.floating_toggle_button.raise_()
+        # arrow_y = self.height() // 2 - self.floating_toggle_button.height() // 2
+        # self.floating_toggle_button.move(arrow_x, arrow_y)
+        # self.floating_toggle_button.raise_()
 
 
 if __name__ == "__main__":
