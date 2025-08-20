@@ -44,6 +44,7 @@ def find_ch341_uart_port():
     return None
 
 def get_modbus_port():
+    return "/dev/ttyS1"
     if platform.system() == "Windows":
         return "COM5"  # Adjust as necessary
     else:  # Assuming Linux
@@ -89,3 +90,4 @@ def list_video_devices_v4l2():
 #     for path in paths:
 #         print(f"  - {path}")
 
+print(get_modbus_port())

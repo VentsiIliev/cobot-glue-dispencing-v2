@@ -63,16 +63,17 @@ class Timer:
 
 class GlueSprayService:
     def __init__(self,generatorTurnOffTimeout=10):
-        self.relaysId = 5
-        self.motorsId = 5
-        self.fanId = 5
+
+        self.relaysId = 1
+        self.motorsId = 1
+        self.fanId = 1
         self.generatorTurnOffTimeout = generatorTurnOffTimeout # minutes
         self.timer = Timer(self.generatorTurnOffTimeout, self.generatorOff)
 
         self.glueA_addresses = 0  # MOTOR
-        self.glueB_addresses = 2  # MOTOR
-        self.glueC_addresses = 4  # MOTOR
-        self.glueD_addresses = 12  # MOTOR
+        self.glueB_addresses = 1  # MOTOR
+        self.glueC_addresses = 2  # MOTOR
+        self.glueD_addresses = 3  # MOTOR
 
         self.generator_relay_address = 8  # generator relay address
 
@@ -95,10 +96,10 @@ class GlueSprayService:
             client = self.getModbusClient(self.motorsId)
 
             # client.writeRegister(motorAddress, 0)
-            client.writeRegister(motorAddress, -speedReverse, signed=True)  # Set reverse speed
+            # client.writeRegister(motorAddress, -speedReverse, signed=True)  # Set reverse speed
 
             print(f"Motor reverse time = {delay} seconds")
-            time.sleep(delay)  # Wait for the motor to stop complete reverse movement
+            # time.sleep(delay)  # Wait for the motor to stop complete reverse movement
 
             client.writeRegister(motorAddress, 0)  # Reverse steps if needed
             client.close()
@@ -314,7 +315,7 @@ if __name__ == "__main__":
     # glueService.generatorOn()
     # time.sleep(1)
     # glueService.generatorOff()
-    client = glueService.getModbusClient(5)
+    client = glueService.getModbusClient(1)
     # glueService.relaysId(134)  # Turn on glue A relay
 
     # state = glueService.motorState(5)
@@ -322,8 +323,9 @@ if __name__ == "__main__":
 
 
     print("Motor State: ",glueService.motorState(2))
-    glueService.motorOn(2,30000)
-    # time.sleep(1)
+    while True:
+        glueService.motorOff(1,0,0.0)
+        time.sleep(1)
     # glueService.motorOn(2,5000)
-    time.sleep(5)
-    glueService.motorOff(2,1,0.0)
+    # time.sleep(5)
+    # glueService.motorOff(1,0,0.0)

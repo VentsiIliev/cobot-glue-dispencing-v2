@@ -1,75 +1,15 @@
-import sys
-from PyQt6.QtWidgets import QApplication, QWidget, QFormLayout, QLineEdit, QLabel, QComboBox, QSizePolicy
-from PyQt6.QtGui import QFont, QIcon
-from PyQt6.QtCore import Qt
-from datetime import datetime, timedelta
-import random
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QComboBox, QVBoxLayout, QHBoxLayout, QLabel
+from PyQt6.QtWidgets import QFrame
 
-from PyQt6.QtCore import Qt, pyqtSignal
-
-from pl_gui.dashboard.DraggableCard import DraggableCard
-from pl_gui.dashboard.GlueMeterWidget import GlueMeterWidget
 from API.MessageBroker import MessageBroker
+from pl_gui.dashboard.GlueMeterWidget import GlueMeterWidget
 from pl_gui.specific.enums.GlueType import GlueType
-from PyQt6.QtWidgets import QFrame
-from API.localization.LanguageResourceLoader import LanguageResourceLoader
-from API.localization.enums.Message import Message
-
-class GlueSetpointFields(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.langLoader = LanguageResourceLoader()
-        self.layout = QFormLayout(self)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-
-        self.g_per_m_input = QLineEdit()
-        self.g_per_sqm_input = QLineEdit()
-
-        self.g_per_m_input.setPlaceholderText("g/m")
-        self.g_per_sqm_input.setPlaceholderText("g/m²")
-
-        self.layout.addRow("g/m:", self.g_per_m_input)
-        self.layout.addRow("g/m²:", self.g_per_sqm_input)
-
-        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
-
-
-import sys
-from PyQt6.QtWidgets import QApplication, QWidget, QFormLayout, QLineEdit, QLabel, QComboBox, QSizePolicy, QVBoxLayout
-from PyQt6.QtGui import QFont, QIcon
-from PyQt6.QtCore import Qt
-from datetime import datetime, timedelta
-import random
-# from pl_gui.dashboard.DraggableCard import DraggableCard
-# from pl_gui.dashboard.GlueMeterWidget import GlueMeterWidget
-# from API.MessageBroker import MessageBroker
-# from pl_gui.specific.enums.GlueType import GlueType
-from PyQt6.QtWidgets import QFrame
-
-
-
-
-class GlueSetpointFields(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-        self.layout = QFormLayout(self)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-
-        self.g_per_m_input = QLineEdit()
-        self.g_per_sqm_input = QLineEdit()
-
-        self.g_per_m_input.setPlaceholderText("g/m")
-        self.g_per_sqm_input.setPlaceholderText("g/m²")
-
-        self.layout.addRow("g/m:", self.g_per_m_input)
-        self.layout.addRow("g/m²:", self.g_per_sqm_input)
-
-        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
 
 
 class GlueMeterCard(QFrame):
     glueTypeChanged = pyqtSignal(str)
+
     def __init__(self, label_text, index):
         super().__init__()
         self.label_text = label_text
@@ -83,26 +23,30 @@ class GlueMeterCard(QFrame):
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(10)
 
+        # Create horizontal layout for label and combo box
+        header_layout = QHBoxLayout()
+
+        # Create the label
+        self.label = QLabel(f"{self.label_text} {self.index}")
+
         # Create the glue type combo box
         self.glue_type_combo = QComboBox()
         self.glue_type_combo.addItems([GlueType.TypeA.value, GlueType.TypeB.value, GlueType.TypeC.value])
         self.glue_type_combo.setCurrentText("Type A")
         self.glue_type_combo.currentTextChanged.connect(self.on_glue_type_changed)
 
-        # Create the setpoints widget
-        self.setpoints = GlueSetpointFields()
+        # Add label and combo to horizontal layout
+        header_layout.addWidget(self.label)
+        header_layout.addWidget(self.glue_type_combo)
+        header_layout.addStretch()  # This pushes everything to the left
 
         # Create the meter widget (placeholder for now)
         self.meter_widget = GlueMeterWidget(self.index)
-        # self.meter_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.meter_widget.setStyleSheet("background-color: #f0f0f0; border: 1px solid #ccc; padding: 20px;")
 
-        # Add all widgets to the main layout
-        # main_layout.addWidget(self.label)
-        # main_layout.addWidget(QLabel("Glue Type:"))
-        main_layout.addWidget(self.glue_type_combo)
+        # Add the horizontal layout and meter widget to the main layout
+        main_layout.addLayout(header_layout)
         main_layout.addWidget(self.meter_widget)
-        main_layout.addWidget(self.setpoints)
 
         # Set a border for the card
         self.setStyleSheet("GlueMeterCard { border: 2px solid #ccc; border-radius: 5px; }")
@@ -110,6 +54,7 @@ class GlueMeterCard(QFrame):
     def on_glue_type_changed(self, glue_type):
         print(f"Glue type changed to: {glue_type}")
         self.glueTypeChanged.emit(glue_type)
+
     def subscribe(self):
         meter = GlueMeterWidget(self.index)
         broker = MessageBroker()
@@ -138,7 +83,7 @@ if __name__ == "__main__":
     main_window.setGeometry(100, 100, 400, 300)
 
     # Initialize the GlueMeterCard
-    card = GlueMeterCard("Test Glue Meter", 1)
+    card = GlueMeterCard("Glue", 1)
 
     # Set the card as the central widget of the main window
     main_window.setCentralWidget(card)

@@ -45,8 +45,8 @@ class GlueMeterCard(QFrame):
     def build_ui(self):
         # Create the main layout for the card
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(10, 10, 10, 10)
-        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(5)
 
         # Create the glue type combo box
         self.glue_type_combo = QComboBox()

@@ -757,7 +757,7 @@ class RobotService:
         ret = self.robot.moveCart(position, tool, workpiece, vel=velocity, acc=acceleration)
 
         if waitToReachPosition:  # TODO comment out when using test robot
-            self._waitForRobotToReachPosition(position, 1, delay=0.1)
+            self._waitForRobotToReachPosition(position, 2, delay=0.1)
 
         # self.robot.moveL(position, tool, workpieces, vel=velocity, acc=acceleration,blendR=20)
         return ret

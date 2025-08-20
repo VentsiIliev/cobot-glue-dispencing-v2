@@ -1,19 +1,12 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout,QSizePolicy, QLabel, QHBoxLayout
-from PyQt6.QtCore import Qt, QTimer,QRect
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy, QLabel, QHBoxLayout
+from PyQt6.QtCore import Qt, QTimer, QRect
 from PyQt6.QtGui import QFont, QPainter, QPen, QColor
 import threading
 import requests
 import logging
 
-
-# GLUE_METER_URL_1 = "http://192.168.222.76/weight"
-# GLUE_METER_URL_2 = "http://192.168.222.76/weight1"
-# GLUE_METER_URL_3 = "http://192.168.222.76/weight2"
-
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QSizePolicy
-from PyQt6.QtCore import Qt, QTimer, QRect
-from PyQt6.QtGui import QPainter, QColor, QFont, QPen
 from API.MessageBroker import MessageBroker  # Ensure this is your real path
+
 
 class GlueMeterWidget(QWidget):
     def __init__(self, id, parent=None):
@@ -29,24 +22,44 @@ class GlueMeterWidget(QWidget):
 
         self.main_layout = QHBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
+        # REMOVED: self.main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Create a container widget for the label to prevent frame wrapping
+        self.label_container = QWidget()
+        self.label_container.setStyleSheet("QWidget { border: none; background: transparent; }")
+        label_layout = QVBoxLayout(self.label_container)
+        label_layout.setContentsMargins(0, 0, 0, 0)
+        label_layout.setSpacing(0)
 
         self.label = QLabel("0 g")
         self.label.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
         self.label.setMinimumWidth(100)
         self.label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        self.label.setStyleSheet("QLabel { border: none; background: transparent; }")
 
         font = QFont()
         font.setPointSize(15)
         self.label.setFont(font)
-        self.main_layout.addWidget(self.label)
+
+        # Add label to its container, then container to main layout
+        label_layout.addWidget(self.label)
+        self.main_layout.addWidget(self.label_container)
+
+        # Create container for state indicator
+        self.state_container = QWidget()
+        self.state_container.setStyleSheet("QWidget { border: none; background: transparent; }")
+        state_layout = QVBoxLayout(self.state_container)
+        state_layout.setContentsMargins(0, 0, 0, 0)
+        state_layout.setSpacing(0)
 
         # State indicator circle
         self.state_indicator = QLabel()
         self.state_indicator.setFixedSize(16, 16)
         self.state_indicator.setStyleSheet("background-color: gray; border-radius: 8px;")
-        self.main_layout.addWidget(self.state_indicator)
-        self.main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+        # Center the state indicator within its container
+        state_layout.addWidget(self.state_indicator, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.main_layout.addWidget(self.state_container)
 
         self.canvas = QWidget()
         self.canvas.setMinimumHeight(50)
@@ -168,7 +181,3 @@ if __name__ == "__main__":
     widget = GlueMeterWidget(id=1)
     widget.show()
     sys.exit(app.exec())
-
-
-
-

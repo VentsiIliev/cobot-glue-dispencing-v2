@@ -1,6 +1,6 @@
 from PyQt6.QtCore import Qt, QMimeData
 from PyQt6.QtGui import QDrag
-from PyQt6.QtWidgets import QFrame, QSizePolicy, QVBoxLayout, QHBoxLayout, QLabel
+from PyQt6.QtWidgets import QFrame, QSizePolicy, QVBoxLayout, QHBoxLayout, QLabel, QWidget
 
 
 class DraggableCard(QFrame):
@@ -42,9 +42,16 @@ class DraggableCard(QFrame):
 
         self.layout.addLayout(self.top_layout)
 
-        # --- Add content widgets (all to be minimized together) ---
+        # --- Add content widgets without extra frames ---
         for w in self.content_widgets:
-            self.layout.addWidget(w)
+            # Create a transparent container to prevent automatic frame wrapping
+            container_widget = QWidget()
+            container_widget.setStyleSheet("QWidget { border: none; background: transparent; }")
+            container_layout = QVBoxLayout(container_widget)
+            container_layout.setContentsMargins(0, 0, 0, 0)
+            container_layout.setSpacing(0)
+            container_layout.addWidget(w)
+            self.layout.addWidget(container_widget)
 
     def hideLabel(self):
         self.title_label.setVisible(False)
@@ -112,12 +119,20 @@ class DraggableCard(QFrame):
     def dropEvent(self, event):
         event.ignore()
 
+
 if __name__ == "__main__":
-    from PyQt6.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication, QComboBox
     import sys
 
     app = QApplication(sys.argv)
-    card = DraggableCard("Test Card", [QLabel("Content 1"), QLabel("Content 2")])
-    card.show()
-    sys.exit(app.exec())
 
+    # Test with combo box and label
+    combo = QComboBox()
+    combo.addItems(["Type A", "Type B", "Type C"])
+
+    label = QLabel("Test Content")
+
+    card = DraggableCard("Test Card", [combo, label])
+    card.show()
+
+    sys.exit(app.exec())

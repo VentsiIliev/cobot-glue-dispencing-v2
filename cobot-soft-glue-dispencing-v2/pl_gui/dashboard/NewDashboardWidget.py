@@ -529,13 +529,12 @@ class GlueDashboardWidget(QWidget):
         broker = MessageBroker()
         broker.subscribe(f"GlueMeter_{index}/VALUE", meter.updateWidgets)
         broker.subscribe(f"GlueMeter_{index}/STATE", meter.updateState)
-        setpoints = GlueSetpointFields()
 
         glue_type_combo = QComboBox()
         glue_type_combo.addItems([glue_type.value for glue_type in GlueType])
         glue_type_combo.setCurrentText("Type A")
 
-        card = DraggableCard(label_text, [glue_type_combo, meter, setpoints],
+        card = DraggableCard(label_text, [glue_type_combo, meter],
                              remove_callback=self.remove_card_and_restore,
                              container=self.shared_card_container)
         card.glue_type_combo = glue_type_combo

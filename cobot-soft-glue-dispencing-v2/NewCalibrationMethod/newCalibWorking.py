@@ -1,3 +1,5 @@
+import time
+
 import cv2
 import numpy as np
 from VisionSystem.VisionSystem import VisionSystem
@@ -83,7 +85,7 @@ class CalibrationPipeline:
         self.detected_ids = set()
         self.marker_centers = {}
         self.markers_offsets_mm = {}
-        self.current_marker_id = None
+        self.current_marker_id = 0
 
         self.Z_current = self.robot_service.getCurrentPosition()[2]
         self.Z_target = 150  # desired height
@@ -180,11 +182,11 @@ class CalibrationPipeline:
 
         return frame, False
 
-    def detect_specific_marker(self, marker_id,skip_frames_after_motion=True, skip_frames=3):
+    def detect_specific_marker(self, marker_id, skip_frames_after_motion=True, skip_frames=5):
         marker_found = False
         arucoCorners = []
         arucoIds = []
-
+        new_frame = None
         while not marker_found:
             _, new_frame, _ = self.system.run()
 
@@ -193,14 +195,13 @@ class CalibrationPipeline:
                 continue
 
             arucoCorners, arucoIds, image = self.system.detectArucoMarkers(new_frame)
-            print(f"Detection loop for specific marker {marker_id}" )
-            print(f"Detected {len(arucoIds)} ArUco markers at new pose ID: {arucoIds if arucoIds is not None else 'None'}")
+            print(f"Detection loop for specific marker {marker_id}")
+            print(
+                f"Detected {len(arucoIds)} ArUco markers at new pose ID: {arucoIds if arucoIds is not None else 'None'}")
             if arucoIds is not None and marker_id in arucoIds:
                 marker_found = True
 
-        return arucoCorners,arucoIds
-
-
+        return arucoCorners, arucoIds,new_frame
 
     def update_marker_centers(self, marker_id,corners,ids):
         for i, marker_id in enumerate(ids.flatten()):
@@ -222,7 +223,7 @@ class CalibrationPipeline:
     def run(self):
         while True:
             _, frame, _ = self.system.run()
-
+            print("Current state:", self.current_state)
             if self.current_state == self.states["INITIALIZING"]:
                 if frame is None:
                     continue
@@ -298,112 +299,131 @@ class CalibrationPipeline:
 
 
             elif self.current_state == self.states["ALIGN_ROBOT"]:
+                marker_id = self.current_marker_id
 
-                for marker_id in self.required_ids:
-                    self.current_marker_id = marker_id
-                    # Get previously computed marker offset
-                    current_marker_offset_mm = self.markers_offsets_mm.get(marker_id, (0, 0))
-                    print(f"Marker {marker_id} offset in mm: {current_marker_offset_mm}")
+                # (1) Precomputed offset from calibration pose to marker
+                calib_to_marker = self.markers_offsets_mm.get(marker_id, (0, 0))
 
-                    # Get current robot position
-                    current_robot_position = self.robot_service.getCurrentPosition()
-                    x, y, z, rx, ry, rz = current_robot_position
-                    print(f"Current robot position: {current_robot_position}")
+                # (2) Current robot pose
+                current_pose = self.robot_service.getCurrentPosition()
+                x, y, z, rx, ry, rz = current_pose
 
-                    # Apply offset and set target Z height
-                    x_new = x + current_marker_offset_mm[0]
-                    y_new = y + current_marker_offset_mm[1]
-                    z_new = self.Z_target
-                    new_position = [x_new, y_new, z_new, rx, ry, rz]
-                    print(f"Moving robot to new position: {new_position}")
-                    self.robot_service.moveToPosition(new_position, ROBOT_TOOL, ROBOT_USER, 20, 100, True)
+                # (3) Calibration pose
+                calib_pose = CALIBRATION_POS
+                cx, cy, cz, crx, cry, crz = calib_pose
 
-                    # --- Re-detect current marker at new height ---
-                    arucoCorners,arucoIds = self.detect_specific_marker(marker_id)
+                # (4) Compute delta: calibration -> current
+                calib_to_current = (x - cx, y - cy)
 
-                    self.update_marker_centers(marker_id,arucoCorners,arucoIds)
+                # (5) Compute current -> marker
+                current_to_marker = (
+                    calib_to_marker[0] - calib_to_current[0],
+                    calib_to_marker[1] - calib_to_current[1]
+                )
 
-                    if self.PPM is not None and self.bottom_left_chessboard_corner_px is not None:
-                        bottom_left_px = self.bottom_left_chessboard_corner_px  # use detected bottom-left corner
+                # (6) Apply correction at current pose
+                x_new = x + current_to_marker[0]
+                y_new = y + current_to_marker[1]
+                z_new = self.Z_target
+                new_position = [x_new, y_new, z_new, rx, ry, rz]
 
-                        if self.debug_draw:
-                            self.debug_draw.draw_marker_center(frame, marker_id, self.marker_centers)
+                print(f"Moving robot from current pose to marker {marker_id}: {new_position}")
+                self.robot_service.moveToPosition(new_position, ROBOT_TOOL, ROBOT_USER, 20, 100, True)
 
+                # --- Re-detect marker 4 at new height ---
+                arucoCorners,arucoIds,_ = self.detect_specific_marker(marker_id)
 
-                    if marker_id in self.marker_centers_mm:
-                        new_marker_px = self.marker_centers[marker_id]
-                        # Compute new offset relative to image center
-                        image_center_px = (
-                            self.system.camera_settings.get_camera_width() // 2,
-                            self.system.camera_settings.get_camera_height() // 2
-                        )
+                self.update_marker_centers(marker_id,arucoCorners,arucoIds)
 
-                        if self.debug:
-                            self.debug_draw.draw_image_center(frame)
+                if self.PPM is not None and self.bottom_left_chessboard_corner_px is not None:
+                    bottom_left_px = self.bottom_left_chessboard_corner_px  # use detected bottom-left corner
 
-                        newPpm = self.PPM * self.ppm_scale
-                        print(f"New PPM at Z={self.Z_target}mm: {newPpm:.3f} px/mm")
-
-                        # Calculate new offsets in pixels
-                        new_offset_X_px= new_marker_px[0] - image_center_px[0]
-                        new_offset_Y_px= new_marker_px[1] - image_center_px[1]
-
-                        # Convert offsets to mm
-                        new_offset_x_mm = new_offset_X_px/newPpm
-                        new_offset_y_mm = new_offset_Y_px/newPpm
-
-                        # Update robot position with new offsets
-                        new_current_pose = self.robot_service.getCurrentPosition()
-                        x,y,z,rx,ry,rz = new_current_pose
-                        x+= new_offset_x_mm
-                        y+= -new_offset_y_mm
-                        new_current_pose = [x,y,z,rx,ry,rz]
-                        self.robot_service.moveToPosition(new_current_pose, ROBOT_TOOL, ROBOT_USER, 20, 100, True)
-
-                        print(f"New marker {marker_id} offset from image center at Z={self.Z_target}mm: "
-                              f"X={new_offset_x_mm:.2f}, Y={new_offset_y_mm:.2f}")
-
-                        # Draw current marker on the frame
-                        if self.debug_draw:
-                            self.debug_draw.draw_marker_center(frame, marker_id, self.marker_centers)
+                    # if self.debug_draw:
+                    #     self.debug_draw.draw_marker_center(frame, marker_id, self.marker_centers)
 
 
-                        self.current_state= self.states["DONE"]
-                    else:
+                if marker_id in self.marker_centers_mm:
+                    new_marker_px = self.marker_centers[marker_id]
+                    # Compute new offset relative to image center
+                    image_center_px = (
+                        self.system.camera_settings.get_camera_width() // 2,
+                        self.system.camera_settings.get_camera_height() // 2
+                    )
 
-                        print(f"Marker {marker_id} not detected at new pose.")
+                    if self.debug:
+                        self.debug_draw.draw_image_center(frame)
+
+                    newPpm = self.PPM * self.ppm_scale
+                    print(f"New PPM at Z={self.Z_target}mm: {newPpm:.3f} px/mm")
+
+                    # Calculate new offsets in pixels
+                    new_offset_X_px= new_marker_px[0] - image_center_px[0]
+                    new_offset_Y_px= new_marker_px[1] - image_center_px[1]
+
+                    # Convert offsets to mm
+                    new_offset_x_mm = new_offset_X_px/newPpm
+                    new_offset_y_mm = new_offset_Y_px/newPpm
+
+                    # Update robot position with new offsets
+                    new_current_pose = self.robot_service.getCurrentPosition()
+                    x,y,z,rx,ry,rz = new_current_pose
+                    x+= new_offset_x_mm
+                    y+= -new_offset_y_mm
+                    new_current_pose = [x,y,z,rx,ry,rz]
+                    self.robot_service.moveToPosition(new_current_pose, ROBOT_TOOL, ROBOT_USER, 20, 100, True)
+
+                    print(f"New marker {marker_id} offset from image center at Z={self.Z_target}mm: "
+                          f"X={new_offset_x_mm:.2f}, Y={new_offset_y_mm:.2f}")
+
+                    # Draw marker 4 on the frame
+                    # if self.debug_draw:
+                    #     self.debug_draw.draw_marker_center(frame, marker_id, self.marker_centers)
+
+
+                    self.current_state= self.states["DONE"]
+                else:
+
+                    print(f"Marker {marker_id} not detected at new pose.")
             elif self.current_state == self.states["DONE"]:
-
+                marker_id = self.current_marker_id
 
                 # FOR DEBUGGING AND VALIDATION ONLY REDETECT THE MARKER AND SHOW IT`S CENTER
-                arucoCorners, arucoIds = self.detect_specific_marker(self.current_marker_id,skip_frames_after_motion=False, skip_frames=0)
+                arucoCorners, arucoIds,frame = self.detect_specific_marker(marker_id,skip_frames_after_motion=False, skip_frames=0)
 
-                self.update_marker_centers(self.current_marker_id, arucoCorners, arucoIds)
+                self.update_marker_centers(marker_id, arucoCorners, arucoIds)
 
                 if self.debug_draw:
-                    self.debug_draw.draw_marker_center(frame, self.current_marker_id, self.marker_centers)
+                    self.debug_draw.draw_marker_center(frame, marker_id, self.marker_centers)
                     self.debug_draw.draw_image_center(frame)
+
+                cv2.imwrite(f"aligned_center_marker_{self.current_marker_id}.png", frame)
 
                 cv2.putText(frame, "Calibration complete! Press 'q' to exit.", (10, 30),
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
                 # Get robot position after alignment and store it for calibration
                 current_robot_position = self.robot_service.getCurrentPosition()
-                self.robot_positions_for_calibration[self.current_marker_id] = current_robot_position
-                print(f"Robot position for marker {self.current_marker_id} after alignment: {current_robot_position}")
+                self.robot_positions_for_calibration[marker_id] = current_robot_position
+                print(f"Robot position for marker {marker_id} after alignment: {current_robot_position}")
+
+                if self.current_marker_id < len(self.required_ids) - 1:
+                    self.current_marker_id += 1
+                    self.current_state = self.states["ALIGN_ROBOT"]
+                else:
+                    print("All markers processed. Calibration complete!")
+                    self.current_state = self.states["DONE"]
+                    break
 
             if frame is not None:
                 cv2.imshow("Calibration State Machine", frame)
 
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
-                print("Calibration robot positions: ",self.robot_positions_for_calibration)
-                print("Exiting calibration pipeline.")
                 break
 
         cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
-    pipeline = CalibrationPipeline(required_ids=[0, 1, 2, 3, 4, 5, 6, 7, 8])
+    pipeline = CalibrationPipeline(required_ids=[0, 1, 2, 3, 4, 5, 6])
     pipeline.run()

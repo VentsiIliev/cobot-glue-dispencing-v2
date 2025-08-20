@@ -333,243 +333,114 @@ class DashboardWidget(QWidget):
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
+        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # # --- Machine indicator toolbar at the very top ---
-        # machine_toolbar = MachineToolbar()
-        # machine_toolbar.start_request.connect(self.start_requested.emit)
-        # machine_toolbar_frame = QFrame()
-        # machine_toolbar_frame.setFrameShape(QFrame.Shape.StyledPanel)
-        # machine_toolbar_frame.setStyleSheet("background-color: #FFFBFE; border: 1px solid #E7E0EC;")
-        # machine_toolbar_layout = QVBoxLayout(machine_toolbar_frame)
-        # machine_toolbar_layout.setContentsMargins(5, 5, 5, 5)
-        # machine_toolbar_layout.addWidget(machine_toolbar)
-        # main_layout.addWidget(machine_toolbar_frame)
+        # --- TOP SECTION: Preview (left) + Glue Cards (right) ---
+        top_section = QHBoxLayout()
+        top_section.setSpacing(10)
 
-        # --- Top horizontal layout: Toolbar + Camera ---
-        top_layout = QHBoxLayout()
-        top_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        top_layout.setContentsMargins(0, 0, 0, 0)
+        # LEFT: Preview Widget
+        preview_widget = QWidget()
+        preview_layout = QVBoxLayout(preview_widget)
+        preview_layout.setContentsMargins(0, 0, 0, 0)
 
-        # toolbar_widget = QWidget()
-        # self.toolbar_layout = QHBoxLayout(toolbar_widget)
-        # self.toolbar_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        self.trajectory_widget = SmoothTrajectoryWidget(image_width=640, image_height=480)
+        self.trajectory_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
-        self.card_selector = QComboBox()
-        self.card_selector.addItem("Add Card")
+        self.trajectory_widget.setMinimumHeight(240)
 
-        # self.createFlowingToggleButton()
-        # top_layout.addWidget(toolbar_widget, 3)
+        preview_layout.addWidget(self.trajectory_widget)
+        top_section.addWidget(preview_widget, stretch=3)  # takes 3/4 width
 
-        # --- Camera feed ---
-        self.camera_feed = CameraFeed(updateCallback=self.updateCameraFeedCallback,
-                                      toggleCallback=self.dummy_toggle)
-        self.camera_feed.pause_feed()
-        self.camera_feed.setVisible(False)
-        if self.camera_feed.current_resolution == self.camera_feed.resolution_small:
-            self.camera_feed.toggle_resolution()
-
-        main_layout.addLayout(top_layout)
-        main_layout.addWidget(self.camera_feed)
-
-        # --- Main dashboard split ---
-        split_layout = QHBoxLayout()
-        split_layout.setSpacing(15)
-
-        # LEFT SECTION: CardContainer grid for flexibility
-        left_section_widget = QWidget()
-        left_section_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-
-        self.left_grid_container = CardContainer(columns=2, rows=3)
-        left_layout = QVBoxLayout(left_section_widget)
-        left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.addWidget(self.left_grid_container)
-
-        # --- Create trajectory widget with FIXED size policy ---
-        self.trajectory_widget = SmoothTrajectoryWidget(image_width=640, image_height=360)
-        # CRITICAL: Set fixed size policy to prevent the widget from expanding
-        self.trajectory_widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-
-        # # Create trajectory frame with FIXED size policy
-        # trajectory_frame = QFrame()
-        # trajectory_frame.setStyleSheet("""
-        #     QFrame {
-        #         background: #FFFBFE;
-        #         border: 1px solid #E7E0EC;
-        #         border-radius: 12px;
-        #         padding: 2px;
-        #     }
-        # """)
-        # # CRITICAL: Set fixed size policy for the frame too
-        # trajectory_frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        #
-        # # Calculate exact frame size based on trajectory widget + padding
-        # frame_width = 640 + 16  # widget width + 8px padding on each side
-        # frame_height = 360 + 80 + 16  # widget height + metrics height + padding
-        # trajectory_frame.setFixedSize(frame_width, frame_height)
-        #
-        trajectory_layout = QVBoxLayout(self.trajectory_widget)
-        trajectory_layout.setContentsMargins(0, 0, 0, 0)
-        trajectory_layout.setSpacing(0)
-        trajectory_layout.addWidget(self.trajectory_widget,alignment=Qt.AlignmentFlag.AlignCenter)
-
-        # Subscribe to message broker
-        broker = MessageBroker()
-        broker.subscribe("robot/trajectory/point", self.trajectory_widget.update)
-        broker.subscribe("robot/trajectory/updateImage", self.trajectory_widget.set_image)
-        # broker.subscribe("robot/trajectory/newTrail", self.trajectory_widget.start_new_trail)
-
-        # Place trajectory widget in the first cell (index 0) - spans 2 columns
-        self.left_grid_container.layout.addWidget(self.trajectory_widget, 0, 0, 1, 2)  # row=0, col=0, rowspan=1, colspan=2
-        self.left_grid_container.grid_items[0] = self.trajectory_widget
-        self.left_grid_container.grid_items[1] = self.trajectory_widget  # Same widget occupies both cells
-
-        # Add placeholder frames for remaining cells (starting from index 2)
-        for i in range(2, 6):
-            placeholder_frame = QFrame()
-            placeholder_frame.setStyleSheet("""
-                        QFrame {
-                            border: 1px dashed #CAC4D0;
-                            background-color: #FAF9FC;
-                            border-radius: 8px;
-                        }
-                    """)
-            placeholder_frame.setMinimumHeight(120)
-            placeholder_frame.setMaximumHeight(160)
-            placeholder_frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-
-            placeholder_layout = QVBoxLayout(placeholder_frame)
-            placeholder_layout.setContentsMargins(15, 15, 15, 15)
-            placeholder_label = QLabel(f"Placeholder{i - 1}")  # Adjust numbering since we start from index 2
-            placeholder_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            placeholder_label.setStyleSheet("""
-                font-size: 13px;
-                color: #79747E;
-                font-style: italic;
-                background: transparent;
-                border: none;
-                padding: 0px;
-            """)
-            placeholder_layout.addWidget(placeholder_label)
-
-            self.left_grid_container._replace_item_at_index(i, placeholder_frame)
-
-        split_layout.addWidget(left_section_widget, stretch=3)
-
-        # RIGHT SECTION: Glue cards
-        right_section = QVBoxLayout()
-        right_section.setSpacing(8)
-        right_section.setAlignment(Qt.AlignmentFlag.AlignTop)
-
+        # RIGHT: Glue Cards
+        glue_cards_widget = QWidget()
+        glue_cards_layout = QVBoxLayout(glue_cards_widget)
+        glue_cards_layout.setContentsMargins(0, 0, 0, 0)
+        glue_cards_layout.setSpacing(8)
 
         for i in range(1, self.glueMetersCount + 1):
             glue_card = self.create_glue_card(i, f"Glue {i}")
-            glue_card.setMinimumWidth(300)
-            glue_card.setMinimumHeight(160)
-            glue_card.setMaximumHeight(200)
+            glue_card.setMinimumHeight(75)
             glue_card.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
-            right_section.addWidget(glue_card)
+            glue_cards_layout.addWidget(glue_card)
 
-        right_section.addStretch()
-        split_layout.addLayout(right_section, stretch=1)
+        glue_cards_layout.addStretch()
+        glue_cards_widget.setMinimumWidth(320)
+        glue_cards_widget.setMaximumWidth(400)
 
-        main_layout.addLayout(split_layout, stretch=1)
+        top_section.addWidget(glue_cards_widget, stretch=1)  # takes 1/4 width
+
+        # --- BOTTOM SECTION: Placeholders ---
+        bottom_section = QVBoxLayout()
+        bottom_section.setSpacing(10)
+
+        placeholders_title = QLabel("Dashboard Components")
+        placeholders_title.setStyleSheet(
+            "font-size: 16px; font-weight: bold; color: #1C1B1F; margin-bottom: 10px;"
+        )
+        bottom_section.addWidget(placeholders_title)
+
+        placeholders_container = QWidget()
+        placeholders_layout = QGridLayout(placeholders_container)
+        placeholders_layout.setSpacing(15)
+        placeholders_layout.setContentsMargins(0, 0, 0, 0)
+
+        for row in range(2):
+            for col in range(3):
+                placeholder_frame = QFrame()
+                placeholder_frame.setStyleSheet(
+                    "QFrame {border: 2px dashed #CAC4D0; background-color: #FAF9FC; border-radius: 12px;}"
+                )
+                placeholder_frame.setMinimumHeight(120)
+                placeholder_frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+                placeholder_label = QLabel(f"Component {row * 3 + col + 1}")
+
+                placeholder_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                placeholder_label.setStyleSheet(
+                    "font-size: 14px; color: #79747E; font-style: italic; background: transparent; border: none;"
+                )
+
+                layout = QVBoxLayout(placeholder_frame)
+                layout.setContentsMargins(10, 10, 10, 10)
+                layout.addWidget(placeholder_label)
+
+                placeholders_layout.addWidget(placeholder_frame, row, col)
+
+        bottom_section.addWidget(placeholders_container)
+
+        # Add top and bottom sections to main layout
+        main_layout.addLayout(top_section, stretch=2)
+        main_layout.addLayout(bottom_section, stretch=1)
+
         self.setLayout(main_layout)
 
-    # def createFlowingToggleButton(self):
-    #     self.floating_toggle_button = FloatingToggleButton(self, on_toggle_callback=self.toggle_settings_panel)
-
-    # def createSettingsTogglePanel(self):
-    #     """Create the settings toggle panel"""
-    #     available_labels = list(self.card_map.keys())
-    #     self.settings_panel = TogglePanel(available_labels, self, onToggleCallback=self.onSettingsToggle,
-    #                                       cameraToggleCallback=self.showCameraFeed)
-    #     self.settings_panel.setFixedWidth(300)
-    #     self.settings_panel.setGeometry(self.width(), 0, 300, self.height())
-    #     self.settings_panel.setStyleSheet("background-color: #ffffff; border-left: 1px solid #ccc;")
-    #     self.settings_panel.raise_()
-    #     self.settings_panel.hide()
-    #
-    #     # Set initial toggle states based on existing cards
-    #     existing_card_names = [card.objectName() for card in self.shared_card_container.get_cards()]
-    #
-    #     for label in available_labels:
-    #         is_active = label in existing_card_names
-    #         self.settings_panel.setToggleState(label, is_active)
-    #
-    #         # Add inactive cards to dropdown
-    #         if not is_active:
-    #             self.card_selector.addItem(label)
-
-    def toggle_settings_panel(self):
-        # Toggle the settings panel using its Drawer logic
-        self.settings_panel.toggle()
-
-        # Reposition the floating toggle button with animation
-        self.floating_toggle_button.reposition(
-            is_panel_visible=self.settings_panel.is_open,
-            panel_width=self.settings_panel.width()
-        )
-
-        # Update arrow direction after animation
-        direction = "▶" if self.settings_panel.is_open else "◀"
-        self.floating_toggle_button.set_arrow_direction(direction)
-
-    # def onSettingsToggle(self, label_text, state):
-    #     """Handle toggle state changes from the settings panel"""
-    #     print(f"Settings toggle for '{label_text}' changed to: {'ON' if state else 'OFF'}")
-    #
-    #     if state == False:  # Turning OFF - remove card
-    #         card = self.shared_card_container.find_card_by_name(label_text)
-    #         if card:
-    #             print(f"Removing card: {label_text}")
-    #             card.on_close()  # This will call remove_card_and_restore
-    #         else:
-    #             print(f"Card '{label_text}' not found for removal")
-    #
-    #     else:  # Turning ON - add card
-    #         # Check if card already exists
-    #         existing_card = self.shared_card_container.find_card_by_name(label_text)
-    #         if existing_card:
-    #             print(f"Card '{label_text}' already exists")
-    #             return
-    #
-    #         # Create and add the card
-    #         if label_text in self.card_map:
-    #             print(f"Adding card: {label_text}")
-    #             card = self.card_map[label_text]()
-    #             self.shared_card_container.add_card(card)
-    #
-    #             # Remove from dropdown if it exists there
-    #             for i in range(self.card_selector.count()):
-    #                 if self.card_selector.itemText(i) == label_text:
-    #                     self.card_selector.removeItem(i)
-    #                     break
-    #         else:
-    #             print(f"Card '{label_text}' not found in card_map")
-
     def create_glue_card(self, index: int, label_text: str) -> DraggableCard:
-        label = QLabel(label_text)
-        label.setFont(QFont("", 12, QFont.Weight.Bold))
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
+        # Create the meter widget - DON'T override its internal styling
         meter = GlueMeterWidget(index)
+
+        # Subscribe to message broker
         broker = MessageBroker()
         broker.subscribe(f"GlueMeter_{index}/VALUE", meter.updateWidgets)
         broker.subscribe(f"GlueMeter_{index}/STATE", meter.updateState)
 
+        # Create the combo box
         glue_type_combo = QComboBox()
         glue_type_combo.addItems([glue_type.value for glue_type in GlueType])
         glue_type_combo.setCurrentText("Type A")
         glue_type_combo.setObjectName(f"glue_combo_{index}")
-        glue_type_combo.currentTextChanged.connect(lambda value, idx=index: self.glue_type_changed_signal.emit(idx, value))
-        # Create the card first
+        glue_type_combo.currentTextChanged.connect(
+            lambda value, idx=index: self.glue_type_changed_signal.emit(idx, value))
+
+        # Create the card - let GlueMeterWidget handle its own alignment
         card = DraggableCard(label_text, [glue_type_combo, meter],
-                             remove_callback=self.remove_card_and_restore,
+                             remove_callback=None,
                              container=self.shared_card_container)
 
         card.glue_type_combo = glue_type_combo
 
-        # Apply styling AFTER the card is created to override any inherited styles
+        # Apply styling ONLY to the combo box
         base_color = "#6750A4"
         lighter = QColor(base_color).lighter(110).name()
         darker = QColor(base_color).darker(110).name()
@@ -577,11 +448,11 @@ class DashboardWidget(QWidget):
         glue_type_combo.setStyleSheet(f"""
             QComboBox#glue_combo_{index} {{
                 background: {base_color};
-                color: black;
+                color: white;
                 border: none;
                 border-radius: 14px;
                 padding: 4px 12px;
-                font-size: 12px;
+                font-size: 11px;
             }}
             QComboBox#glue_combo_{index}:hover {{
                 background: {lighter};
@@ -605,10 +476,10 @@ class DashboardWidget(QWidget):
                 border: none;
                 width: 0px;
                 height: 0px;
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 5px solid #FFFFFF;
-                margin-right: 8px;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 4px solid #FFFFFF;
+                margin-right: 6px;
             }}
             QComboBox#glue_combo_{index} QAbstractItemView {{
                 border: 1px solid {base_color};
@@ -618,7 +489,7 @@ class DashboardWidget(QWidget):
                 outline: none;
             }}
             QComboBox#glue_combo_{index} QAbstractItemView::item {{
-                padding: 8px 12px;
+                padding: 6px 12px;
                 border: none;
                 color: #000000;
             }}
@@ -634,55 +505,9 @@ class DashboardWidget(QWidget):
 
         return card
 
-    def showCameraFeed(self):
-        print("Camera Toggle")
-        visible = self.camera_feed.isVisible()
-        if visible:
-            self.camera_feed.pause_feed()
-            self.shared_card_container.setVisible(True)
-        else:
-            self.camera_feed.resume_feed()
-            self.shared_card_container.setVisible(False)
-
-        self.camera_feed.setVisible(not visible)
-
-    def dummy_toggle(self):
-        is_expanded = self.camera_feed.current_resolution != self.camera_feed.resolution_small
-        print("Camera resolution toggled.")
-
-    def remove_card_and_restore(self, card):
-        """Remove card and restore it to the dropdown"""
-        print("Removing card:", card.objectName())
-        card_name = card.objectName()
-        # Remove from container
-        self.shared_card_container.remove_card(card)
-        # Add back to dropdown (avoid duplicates)
-        existing_items = [self.card_selector.itemText(i) for i in range(self.card_selector.count())]
-        if card_name not in existing_items:
-            self.card_selector.addItem(card_name)
-
-        # Update settings panel toggle state
-        if hasattr(self, 'settings_panel'):
-            self.settings_panel.setToggleState(card_name, False)
-
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        new_width = self.width()
-
-        # panel_width = self.settings_panel.width()
-        # panel_visible = self.settings_panel.isVisible()
-
-        # Adjust panel position
-        # if panel_visible:
-        #     self.settings_panel.setGeometry(new_width - panel_width, 0, panel_width, self.height())
-        #     arrow_x = new_width - panel_width - self.floating_toggle_button.width()
-        # else:
-        #     self.settings_panel.setGeometry(new_width, 0, panel_width, self.height())
-        #     arrow_x = new_width - self.floating_toggle_button.width()
-
-        # arrow_y = self.height() // 2 - self.floating_toggle_button.height() // 2
-        # self.floating_toggle_button.move(arrow_x, arrow_y)
-        # self.floating_toggle_button.raise_()
+        # Resize event handling can be added here if needed
 
 
 if __name__ == "__main__":
@@ -692,6 +517,6 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     dashboard = DashboardWidget(updateCameraFeedCallback)
-    dashboard.resize(600, 500)
+    dashboard.resize(1200, 800)  # Increased default size for better layout
     dashboard.show()
     sys.exit(app.exec())
