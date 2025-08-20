@@ -1,0 +1,144 @@
+{
+    "workpieceId": "2",
+    "name": "2",
+    "description": "",
+    "toolId": "0",
+    "gripperId": "0",
+    "glueType": "Type A",
+    "program": "Trace",
+    "material": "Material1",
+    "contour": {
+        "contour": [
+            [
+                [
+                    672.0,
+                    217.0
+                ]
+            ],
+            [
+                [
+                    665.0,
+                    217.0
+                ]
+            ],
+            [
+                [
+                    545.0,
+                    252.0
+                ]
+            ],
+            [
+                [
+                    560.0,
+                    303.0
+                ]
+            ],
+            [
+                [
+                    685.0,
+                    267.0
+                ]
+            ],
+            [
+                [
+                    686.0,
+                    263.0
+                ]
+            ],
+            [
+                [
+                    672.0,
+                    217.0
+                ]
+            ]
+        ],
+        "settings": {
+            "Spray Width": "10",
+            "Spraying Height": "120",
+            "Fan Speed": "50",
+            "Generator-Glue Delay": "1",
+            "Pump Speed": "5000",
+            "Pump Reverse Time": "0.5",
+            "Pump Speed Reverse": "10000",
+            "RZ Angle": "90",
+            "Glue Type": "Type B",
+            "Generator Timeout": "5",
+            "Time Before Motion": "0.1",
+            "Time Before Stop": "1.0",
+            "Reach Start Threshold": "1.0",
+            "Reach End Threshold": "3.0",
+            "Glue Speed Coefficient": "40",
+            "Velocity": "10",
+            "Acceleration": "80"
+        }
+    },
+    "offset": "",
+    "height": 4,
+    "glue_qty": "",
+    "spray_width": "",
+    "sprayPattern": {
+        "Contour": [
+            {
+                "contour": [
+                    [
+                        [
+                            544.0070190429688,
+                            251.4499969482422
+                        ]
+                    ],
+                    [
+                        [
+                            672.0070190429688,
+                            216.1219940185547
+                        ]
+                    ],
+                    [
+                        [
+                            687.8790283203125,
+                            268.34600830078125
+                        ]
+                    ],
+                    [
+                        [
+                            561.4149780273438,
+                            301.6260070800781
+                        ]
+                    ],
+                    [
+                        [
+                            545.5430297851562,
+                            253.4980010986328
+                        ]
+                    ]
+                ],
+                "settings": {
+                    "Spray Width": "10",
+                    "Spraying Height": "120",
+                    "Fan Speed": "50",
+                    "Generator-Glue Delay": "1",
+                    "Pump Speed": "5000",
+                    "Pump Reverse Time": "0.5",
+                    "Pump Speed Reverse": "10000",
+                    "RZ Angle": "90",
+                    "Glue Type": "Type B",
+                    "Generator Timeout": "5",
+                    "Time Before Motion": "0.1",
+                    "Time Before Stop": "1.0",
+                    "Reach Start Threshold": "1.0",
+                    "Reach End Threshold": "3.0",
+                    "Glue Speed Coefficient": "40",
+                    "Velocity": "10",
+                    "Acceleration": "80"
+                }
+            }
+        ],
+        "Fill": [
+            {
+                "contour": [],
+                "settings": {}
+            }
+        ]
+    },
+    "contourArea": 7033.5,
+    "nozzles": []
+}
