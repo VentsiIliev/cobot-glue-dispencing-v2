@@ -319,8 +319,8 @@ class ExpandedFolderView(QFrame):
 
         # x = margin
         # y = parent_rect.height() - self.floating_icon.height() - margin
-        x = 0
-        y = 0
+        x = 5
+        y = 78
 
         self.floating_icon.move(x, y)
 

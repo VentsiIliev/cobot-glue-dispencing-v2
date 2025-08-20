@@ -12,6 +12,8 @@ from PyQt6.QtCore import QSize
 
 RESOURCES_DIR = os.path.join(os.path.dirname(__file__), 'resources')
 MENU_ICON_PATH = os.path.join(RESOURCES_DIR, 'menu_icon.png')
+
+
 class FloatingFolderIcon(QPushButton):
     """Material Design floating action button for folder icon"""
 
@@ -29,23 +31,51 @@ class FloatingFolderIcon(QPushButton):
             QPushButton {
                 background: #6750A4;
                 border: none;
-                border-radius: 32px;
+                border-radius: 40px;
                 font-size: 20px;
                 font-weight: 500;
                 color: white;
                 font-family: 'Roboto', 'Segoe UI', sans-serif;
+                padding: 12px;
             }
             QPushButton:hover {
                 background: #7965AF;
+                transform: scale(1.05);
             }
             QPushButton:pressed {
                 background: #5A3D99;
+                transform: scale(0.95);
             }
         """)
 
-        # Material Design folder icon
-        self.setIcon(QIcon(QPixmap(MENU_ICON_PATH).scaled(80, 80, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)))
-        self.setText("")
+        # Scale icon to fit with padding - much smaller than button size
+        icon_size = 48  # Leaves 16px padding on each side (80 - 48 = 32, divided by 2 = 16px padding)
+
+        # Create properly sized icon
+        if os.path.exists(MENU_ICON_PATH):
+            pixmap = QPixmap(MENU_ICON_PATH)
+            if not pixmap.isNull():
+                # Scale pixmap maintaining aspect ratio
+                scaled_pixmap = pixmap.scaled(
+                    icon_size, icon_size,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation
+                )
+                self.setIcon(QIcon(scaled_pixmap))
+            else:
+                # Fallback to text if image fails to load
+                self.setText("📁")
+        else:
+            # Fallback to text if file doesn't exist
+            self.setText("📁")
+
+        # Set icon size for the button
+        self.setIconSize(QSize(icon_size, icon_size))
+
+        # Clear any text if icon loaded successfully
+        if not self.icon().isNull():
+            self.setText("")
+
         self.setToolTip(f"Open {self.folder_name} folder")
 
         # Material Design elevation shadow
@@ -55,8 +85,8 @@ class FloatingFolderIcon(QPushButton):
             shadow.setColor(QColor(0, 0, 0, 60))  # Material Design shadow
             shadow.setOffset(0, 8)
             self.setGraphicsEffect(shadow)
-        except:
-            pass
+        except Exception as e:
+            print(f"Shadow effect failed: {e}")
 
         self.clicked.connect(self.clicked_signal.emit)
 
@@ -101,6 +131,7 @@ class FloatingFolderIcon(QPushButton):
         self.fade_animation.finished.connect(self.hide)
         self.fade_animation.start()
 
+
 if __name__ == "__main__":
     import sys
     from PyQt6.QtWidgets import QApplication
@@ -109,11 +140,17 @@ if __name__ == "__main__":
     app.setStyle("Fusion")
 
     window = QWidget()
+    window.setStyleSheet("""
+        QWidget {
+            background-color: #f5f5f5;
+        }
+    """)
     layout = QVBoxLayout(window)
 
     folder_icon = FloatingFolderIcon("Test Folder")
     folder_icon.clicked_signal.connect(lambda: print("Folder icon clicked!"))
     layout.addWidget(folder_icon)
+    layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
     window.setWindowTitle("Floating Folder Icon Example")
     window.resize(300, 200)

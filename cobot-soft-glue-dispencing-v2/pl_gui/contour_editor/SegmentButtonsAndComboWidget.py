@@ -103,20 +103,26 @@ if __name__ == "__main__":
     segment = SimpleNamespace(visible=True, is_active=False)
     layer_name = "Contour"
 
+
     def on_visibility(btn):
         print("Visibility toggled:", btn.isChecked())
+
 
     def on_activate():
         print("Activated")
 
+
     def on_delete():
         print("Deleted")
+
 
     def on_settings():
         print("Settings opened")
 
+
     def on_layer_change(value):
         print("Layer changed to:", value)
+
 
     widget = SegmentButtonsAndComboWidget(
         seg_index=0,
