@@ -17,6 +17,7 @@ from pl_gui.CameraFeed import CameraFeed
 from pl_gui.dashboard.DraggableCard import DraggableCard
 from pl_gui.dashboard.EmptyPlaceholder import EmptyPlaceholder
 from pl_gui.dashboard.GlueMeterWidget import GlueMeterWidget
+from pl_gui.main_application.dashboard.ControlButtonsWidget import ControlButtonsWidget
 from pl_gui.main_application.dashboard.RobotTrajectoryWidget import SmoothTrajectoryWidget
 from pl_gui.specific.enums.GlueType import GlueType
 
@@ -312,6 +313,8 @@ class CardContainer(QWidget):
 
 class DashboardWidget(QWidget):
     start_requested = pyqtSignal()
+    stop_requested = pyqtSignal()
+    pause_requested = pyqtSignal()
     glue_type_changed_signal = pyqtSignal(int,str)
 
     def __init__(self, updateCameraFeedCallback, parent=None):
@@ -347,7 +350,6 @@ class DashboardWidget(QWidget):
 
         self.trajectory_widget = SmoothTrajectoryWidget(image_width=640, image_height=480)
         self.trajectory_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-
         self.trajectory_widget.setMinimumHeight(240)
 
         preview_layout.addWidget(self.trajectory_widget)
@@ -375,38 +377,45 @@ class DashboardWidget(QWidget):
         bottom_section = QVBoxLayout()
         bottom_section.setSpacing(10)
 
-        placeholders_title = QLabel("Dashboard Components")
-        placeholders_title.setStyleSheet(
-            "font-size: 16px; font-weight: bold; color: #1C1B1F; margin-bottom: 10px;"
-        )
-        bottom_section.addWidget(placeholders_title)
-
         placeholders_container = QWidget()
         placeholders_layout = QGridLayout(placeholders_container)
         placeholders_layout.setSpacing(15)
         placeholders_layout.setContentsMargins(0, 0, 0, 0)
 
+        # Create control buttons widget
+        self.control_buttons = ControlButtonsWidget()
+        self.control_buttons.start_clicked.connect(self.start_requested.emit)
+        self.control_buttons.stop_clicked.connect(self.stop_requested.emit)
+        self.control_buttons.pause_clicked.connect(self.pause_requested.emit)
+
         for row in range(2):
             for col in range(3):
-                placeholder_frame = QFrame()
-                placeholder_frame.setStyleSheet(
-                    "QFrame {border: 2px dashed #CAC4D0; background-color: #FAF9FC; border-radius: 12px;}"
-                )
-                placeholder_frame.setMinimumHeight(120)
-                placeholder_frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+                if row == 0 and col == 2:
+                    # Place the control buttons widget spanning both rows in column 2
+                    placeholders_layout.addWidget(self.control_buttons, row, col, 2, 1)  # span 2 rows
+                    continue
+                elif row == 1 and col == 2:
+                    # Skip this cell as it's already occupied by the control buttons widget
+                    continue
+                else:
+                    placeholder_frame = QFrame()
+                    placeholder_frame.setStyleSheet(
+                        "QFrame {border: 2px dashed #CAC4D0; background-color: #FAF9FC; border-radius: 12px;}"
+                    )
+                    placeholder_frame.setMinimumHeight(120)
+                    placeholder_frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
-                placeholder_label = QLabel(f"Component {row * 3 + col + 1}")
+                    placeholder_label = QLabel(f"Component {row * 3 + col + 1}")
+                    placeholder_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                    placeholder_label.setStyleSheet(
+                        "font-size: 14px; color: #79747E; font-style: italic; background: transparent; border: none;"
+                    )
 
-                placeholder_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                placeholder_label.setStyleSheet(
-                    "font-size: 14px; color: #79747E; font-style: italic; background: transparent; border: none;"
-                )
+                    layout = QVBoxLayout(placeholder_frame)
+                    layout.setContentsMargins(10, 10, 10, 10)
+                    layout.addWidget(placeholder_label)
 
-                layout = QVBoxLayout(placeholder_frame)
-                layout.setContentsMargins(10, 10, 10, 10)
-                layout.addWidget(placeholder_label)
-
-                placeholders_layout.addWidget(placeholder_frame, row, col)
+                    placeholders_layout.addWidget(placeholder_frame, row, col)
 
         bottom_section.addWidget(placeholders_container)
 

@@ -74,11 +74,12 @@ class StatusLight(QWidget):
 
 
 class MaterialButton(QPushButton):
-    def __init__(self, text, color="#2196F3"):
+    def __init__(self, text, color="#6750A4",font_size = 12):
         super().__init__(text)
         self.color = color
+        self.font_size = font_size
         self.setMinimumHeight(50)
-        self.setMaximumHeight(60)
+        self.setMaximumHeight(100)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFont(QFont("Roboto", 9, QFont.Weight.Medium))
         self.apply_style()
@@ -93,7 +94,7 @@ class MaterialButton(QPushButton):
                 border: none;
                 border-radius: 14px;
                 padding: 4px 12px;
-                font-size: 12px;
+                font-size: {self.font_size}px;
             }}
             QPushButton:hover {{ background: {lighter}; }}
             QPushButton:pressed {{ background: {darker}; }}

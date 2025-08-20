@@ -22,7 +22,7 @@ from pl_gui.main_application.appWidgets.SettingsAppWidget import SettingsAppWidg
 from pl_gui.main_application.appWidgets.UserManagementAppWidget import UserManagementAppWidget
 from pl_gui.main_application.appWidgets.GalleryAppWidget import GalleryAppWidget
 from pl_gui.main_application.appWidgets.CreateWorkpieceOptionsAppWidget import CreateWorkpieceOptionsAppWidget
-
+from pl_gui.main_application.header.Header import Header
 from pl_gui.Header import Header
 from pl_gui.main_application.controller.CreateWorkpieceManager import CreateWorkpieceManager
 
@@ -48,6 +48,9 @@ USER_MANAGEMENT_ICON = os.path.join(RESOURCES_DIR, "administration/user_manageme
 class ApplicationDemo(QWidget):
     """Demo application showing the Android folder widget with QStackedWidget for app management"""
     start_requested = pyqtSignal()
+    stop_requested = pyqtSignal()
+    pause_requested = pyqtSignal()
+
     def __init__(self, controller):
         super().__init__()
         self.controller = controller
@@ -111,13 +114,11 @@ class ApplicationDemo(QWidget):
             # app_widget = AppWidget(app_name)
         elif app_name == "Start":
             app_widget = DashboardAppWidget(controller=self.controller)
-            self.header.start_btn.setVisible(True)
-            self.header.pause_btn.setVisible(True)
-            self.header.clean_btn.setVisible(True)
-            self.header.state_label.setVisible(True)
-            for key, value in self.header.lights.items():
-                value.setVisible(True)
+
             app_widget.start_requested.connect(lambda: self.controller.handle(START))
+            # implement the logic for stop and pause
+            # app_widget.stop_requested.connect(lambda: self.controller.handle(STOP))
+            # app_widget.pause_requested.connect(lambda: self.controller.handle(PAUSE))
             app_widget.LOGOUT_REQUEST.connect(self.onLogout)
         elif app_name == "Gallery":
             app_widget = GalleryAppWidget(controller=self.controller)
@@ -188,12 +189,6 @@ class ApplicationDemo(QWidget):
             for folder in self.folders:
                 folder.set_grayed_out(False)
 
-            self.header.start_btn.setVisible(False)
-            self.header.pause_btn.setVisible(False)
-            self.header.clean_btn.setVisible(False)
-            self.header.state_label.setVisible(False)
-            for key, value in self.header.lights.items():
-                value.setVisible(False)
 
     def setup_ui(self):
         self.setWindowTitle("Android-Style App Folder Demo with QStackedWidget")
@@ -217,14 +212,15 @@ class ApplicationDemo(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
 
         # --- Machine indicator toolbar at the very top ---
-        self.header = MachineToolbar()
-        self.header.start_request.connect(self.start_requested.emit)
-        self.header.start_btn.setVisible(False)
-        self.header.pause_btn.setVisible(False)
-        self.header.clean_btn.setVisible(False)
-        self.header.state_label.setVisible(False)
-        for key, value in self.header.lights.items():
-            value.setVisible(False)
+        screen_width = QApplication.primaryScreen().size().width()
+        screen_height = QApplication.primaryScreen().size().height()
+        self.header = Header(screen_width,
+                             screen_height,
+                             toggle_menu_callback=None,
+                             dashboard_button_callback=None)
+        self.header.menu_button.setVisible(False)
+        self.header.dashboardButton.setVisible(False)
+        self.header.power_toggle_button.setVisible(False)
 
         machine_toolbar_frame = QFrame()
         machine_toolbar_frame.setFrameShape(QFrame.Shape.StyledPanel)
