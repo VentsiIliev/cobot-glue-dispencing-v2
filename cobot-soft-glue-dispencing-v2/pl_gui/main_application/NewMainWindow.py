@@ -84,13 +84,11 @@ class ApplicationDemo(QWidget):
         print(f"Currently running app: {self.current_running_app}")
         print(f"Demo: App selected - {app_name}")
 
-
-
-        if self.current_running_app == app_name:
-            print(f"Demo: App '{app_name}' is already running, no need to show again.")
-            return
-        # Find which folder emitted this signal
         sender_folder = self.sender()
+
+        # if self.current_running_app == app_name:
+        #     return
+        # Find which folder emitted this signal
         # Store the running app info
         self.current_running_app = app_name
 
