@@ -17,7 +17,7 @@ from src.plvision.PLVision import Contouring
 from API.MessageBroker import MessageBroker
 from API.shared.workpiece.WorkpieceService import WorkpieceService
 from GlueDispensingApplication import CompareContours
-from GlueDispensingApplication.robot.RobotService import RobotService
+from GlueDispensingApplication.robot.RobotService import RobotService, RobotServiceState
 from GlueDispensingApplication.tools.enums.Program import Program
 from GlueDispensingApplication.tools.enums.ToolID import ToolID
 from GlueDispensingApplication import Initializations
@@ -27,6 +27,9 @@ from GlueDispensingApplication.tools.GlueNozzleService import GlueNozzleService
 from GlueDispensingApplication.robot.RobotCalibrationService import RobotCalibrationService
 from GlueDispensingApplication.robot.Plane import Plane
 from GlueDispensingApplication.tools.GlueCell import GlueCellsManagerSingleton
+from GlueDispensingApplication.GlueSprayApplicationState import GlueSprayApplicationState
+from GlueDispensingApplication.SystemStatePublisherThread import SystemStatePublisherThread
+from VisionSystem.VisionSystem import VisionSystemState
 """
 ENDPOINTS
 - start
@@ -36,6 +39,7 @@ ENDPOINTS
 - createWorkpiece
 
 """
+
 
 
 class GlueSprayingApplication:
@@ -53,12 +57,25 @@ class GlueSprayingApplication:
                  glueNozzleService: GlueNozzleService, workpieceService: WorkpieceService,
                  robotService: RobotService, robotCalibrationService: RobotCalibrationService):
         super().__init__()
+        self.broker = MessageBroker()
+        self.stateTopic ="system/state"
+        self.state = GlueSprayApplicationState.INITIALIZING
+
+        self.system_state_publisher = SystemStatePublisherThread(publish_state_func=self.publishState,interval=0.1)
+        self.system_state_publisher.start()
 
         self.settingsManager = settingsManager
         self.visionService = visionService
+        self.visonServiceState = None
+        self.broker.subscribe(self.visionService.stateTopic, self.onVisonSystemStateUpdate)
+
+
         self.glueNozzleService = glueNozzleService
         self.workpieceService = workpieceService
+
         self.robotService = robotService
+        self.robotServiceState = None
+        self.broker.subscribe(self.robotService.stateTopic, self.onRobotServiceStateUpdate)
         # self.robotService.moveToLoginPosition()
 
         # self.robotService.startExecutionThreads()
@@ -73,6 +90,24 @@ class GlueSprayingApplication:
 
         # self.ppmX = self.visionService.getFrameWidth() / self.WORK_AREA_WIDTH  # Pixels per millimeter in x direction
         # self.ppmY = self.visionService.getFrameHeight() / self.WORK_AREA_HEIGHT  # Pixels per millimeter in
+
+    def publishState(self):
+        # print("Publishing state:", self.state)
+        self.broker.publish(self.stateTopic, self.state)
+
+    def onRobotServiceStateUpdate(self, state):
+        self.robotServiceState = state
+        if self.robotServiceState == RobotServiceState.IDLE and self.visonServiceState == VisionSystemState.RUNNING:
+            self.state = GlueSprayApplicationState.IDLE
+        elif self.robotServiceState == RobotServiceState.ERROR and (self.visonServiceState == VisionSystemState.RUNNING):
+            self.state = GlueSprayApplicationState.INITIALIZING
+        elif self.robotServiceState != RobotServiceState.IDLE and self.visonServiceState == VisionSystemState.RUNNING:
+            self.state = GlueSprayApplicationState.STARTED
+
+    def onVisonSystemStateUpdate(self, state):
+        self.visonServiceState = state
+        if self.visonServiceState == VisionSystemState.RUNNING and self.robotServiceState == RobotServiceState.IDLE:
+            self.state = GlueSprayApplicationState.IDLE
 
     # Action functions
     def start(self, contourMatching=True):
@@ -244,6 +279,8 @@ class GlueSprayingApplication:
                 self.robotService.traceContours(finalPaths)
         self.robotService.moveToCalibrationPosition()
         self.robotService.moveToStartPosition()
+        self.robotService._waitForRobotToReachPosition(self.robotService.startPosition, 1, 0.1)
+        self.state = GlueSprayApplicationState.IDLE
         return True, "Success"
 
     def _transform_to_robot_coordinates(self, points):

@@ -3,8 +3,8 @@ import os
 from PyQt6.QtCore import Qt, QPointF, QSize
 from PyQt6.QtGui import QIcon, QColor
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QTreeWidget, QTreeWidgetItem,
-    QComboBox, QPushButton, QApplication, QHBoxLayout, QSizePolicy
+    QWidget, QVBoxLayout, QListWidget, QListWidgetItem,
+    QComboBox, QPushButton, QApplication, QHBoxLayout, QSizePolicy, QLabel
 )
 from functools import partial
 from PyQt6.QtGui import QIcon, QFont
@@ -27,7 +27,144 @@ LOCK_ICON = os.path.join(RESOURCE_DIR, "locked.png")
 UNLOCK_ICON = os.path.join(RESOURCE_DIR, "unlocked.png")
 ACTIVE_ICON = os.path.join(RESOURCE_DIR, "active.png")
 INACTIVE_ICON = os.path.join(RESOURCE_DIR, "inactive.png")
-DROPDOWN_OPEN_ICON = os.path.join(RESOURCE_DIR,"dropdown_open.png")
+DROPDOWN_OPEN_ICON = os.path.join(RESOURCE_DIR, "dropdown_open.png")
+CLOSED_FOLDER_ICON = os.path.join(RESOURCE_DIR, "close_folder.png")
+OPEN_FOLDER_ICON = os.path.join(RESOURCE_DIR, "open_folder.png")
+
+class ListItemData:
+    """Data class to store information about list items"""
+
+    def __init__(self, item_type, layer_name=None, seg_index=None, point_index=None, point_type=None):
+        self.item_type = item_type  # 'layer', 'segment', 'point'
+        self.layer_name = layer_name
+        self.seg_index = seg_index
+        self.point_index = point_index
+        self.point_type = point_type  # 'anchor' or 'control'
+        self.is_expanded = True  # For layers and segments
+
+
+class IndentedWidget(QWidget):
+    """Widget with configurable left indentation"""
+
+    def __init__(self, content_widget, indent_level=0, indent_size=20):
+        super().__init__()
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(indent_level * indent_size, 0, 0, 0)
+        layout.setSpacing(0)
+
+        layout.addWidget(content_widget)
+        layout.addStretch()
+
+
+class ExpandableLayerWidget(QWidget):
+    """Layer widget with expand/collapse functionality"""
+
+    def __init__(self, layer_name, layer_buttons_widget, on_expand_toggle):
+        super().__init__()
+
+        self.layer_name = layer_name
+        self.on_expand_toggle = on_expand_toggle
+        self.is_expanded = True
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)  # Center vertically
+
+        # Expand/collapse button
+        self.expand_icon = QIcon(OPEN_FOLDER_ICON if self.is_expanded else CLOSED_FOLDER_ICON)
+        self.expand_btn = QPushButton(self.expand_icon, "")
+        self.expand_btn.setIconSize(QSize(50, 50))
+        self.expand_btn.setFixedSize(80, 80)
+        self.expand_btn.setStyleSheet("""
+            QPushButton {
+                border: none;
+                font-weight: bold;
+                qproperty-iconSize: 50px 50px;
+            }
+        """)
+        self.expand_btn.setContentsMargins(0, 0, 0, 0)
+        self.expand_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        layout.addWidget(self.expand_btn, alignment=Qt.AlignmentFlag.AlignVCenter)
+
+        # Layer buttons widget
+        layout.addWidget(layer_buttons_widget, alignment=Qt.AlignmentFlag.AlignVCenter)
+
+    def _toggle_expansion(self):
+        self.is_expanded = not self.is_expanded
+        self.expand_btn.setText("▼" if self.is_expanded else "▶")
+        if self.on_expand_toggle:
+            self.on_expand_toggle(self.layer_name, self.is_expanded)
+
+    def set_expanded(self, expanded):
+        self.is_expanded = expanded
+        self.expand_btn.setIcon(QIcon(OPEN_FOLDER_ICON if expanded else CLOSED_FOLDER_ICON))
+        self.expand_btn.setIconSize(QSize(50, 50))
+        # self.expand_btn.setText("▼" if expanded else "▶")
+
+
+class ExpandableSegmentWidget(QWidget):
+    """Segment widget with expand/collapse functionality"""
+
+    def __init__(self, seg_index, segment_buttons_widget, on_expand_toggle):
+        super().__init__()
+
+        self.seg_index = seg_index
+        self.on_expand_toggle = on_expand_toggle
+        self.is_expanded = True
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)  # Center vertically
+
+        # Expand/collapse button
+        self.expand_btn = QPushButton("▼")
+        self.expand_btn.setFixedSize(80, 80)
+        self.expand_btn.setStyleSheet("QPushButton { background-color: transparent; border: none;; font-weight: bold; }")
+        layout.addWidget(self.expand_btn)
+
+        # Segment buttons widget
+        layout.addWidget(segment_buttons_widget)
+
+    def _toggle_expansion(self):
+        self.is_expanded = not self.is_expanded
+        self.expand_btn.setText("▼" if self.is_expanded else "▶")
+        if self.on_expand_toggle:
+            self.on_expand_toggle(self.seg_index, self.is_expanded)
+
+    def set_expanded(self, expanded):
+        self.is_expanded = expanded
+        self.expand_btn.setText("▼" if expanded else "▶")
+
+class PointWidget(QWidget):
+    """Widget for displaying point information"""
+
+    def __init__(self, point_label, coordinates):
+        super().__init__()
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(10)
+
+        # Point label
+        label = QLabel(point_label)
+        label.setFont(QFont("Arial", 12))
+        if point_label.startswith("P"):
+            label.setStyleSheet("color: #0066cc;")  # Blue for anchor points
+        else:
+            label.setStyleSheet("color: #cc6600;")  # Orange for control points
+        label.setFixedWidth(40)
+        layout.addWidget(label)
+
+        # Coordinates
+        coords_label = QLabel(coordinates)
+        coords_label.setFont(QFont("Arial", 12))
+        layout.addWidget(coords_label)
+
+        layout.addStretch()
+
 
 class PointManagerWidget(QWidget):
     def __init__(self, contour_editor=None):
@@ -49,20 +186,21 @@ class PointManagerWidget(QWidget):
                 min-height: 40px;
                 font-size: 18px;
             }
-            QTreeWidget {
+            QListWidget {
                 outline: none;
                 border: 1px solid #ccc;
                 background-color: white;
             }
-            QTreeWidget::item {
-                height: 52px;
-                padding: 2px;
+            QListWidget::item {
+                border: none;
+                padding: 0px;
+                margin: 0px;
             }
-            QTreeWidget::item:selected {
+            QListWidget::item:selected {
                 background-color: #e6f3ff;
                 border: 1px solid #007acc;
             }
-            QTreeWidget::item:hover {
+            QListWidget::item:hover {
                 background-color: #f0f8ff;
             }
         """)
@@ -72,66 +210,93 @@ class PointManagerWidget(QWidget):
         if self.contour_editor:
             self.contour_editor.pointsUpdated.connect(self.refresh_points)
 
-        self._setup_tree_widget()
-        self.layout().addWidget(self.tree)
+        self._setup_list_widget()
+        self.layout().addWidget(self.list)
 
         self.layers = {}
+        self.layer_items = {}  # Store QListWidgetItem for each layer
+        self.segment_items = {}  # Store QListWidgetItem for each segment
+        self.expanded_layers = set()  # Track expanded layers
+        self.expanded_segments = set()  # Track expanded segments
         self.is_drag_mode = False
 
-        self.initialize_tree_structure()
+        self.initialize_list_structure()
 
-    def _setup_tree_widget(self):
-        """Initialize and configure the tree widget"""
-        self.tree = QTreeWidget()
-        self.tree.setHeaderLabels(["Layers", "Controls"])
-        self.tree.setRootIsDecorated(True)
-        self.tree.setAlternatingRowColors(True)
-        self.tree.setIndentation(20)
-
-        # Set initial column widths
-        self.tree.setColumnWidth(0, 120)
-        self.tree.setColumnWidth(1, 320)
+    def _setup_list_widget(self):
+        """Initialize and configure the list widget"""
+        self.list = QListWidget()
+        self.list.setAlternatingRowColors(True)
 
         # Connect signals
-        self.tree.itemClicked.connect(self.highlight_selected_point)
-        self.tree.itemChanged.connect(self.handle_segment_toggle)
+        self.list.itemClicked.connect(self.highlight_selected_point)
 
-    def initialize_tree_structure(self):
-        """Initialize the tree structure with layer items"""
-        self.tree.clear()
+    def initialize_list_structure(self):
+        """Initialize the list structure with layer items"""
+        self.list.clear()
         self.layers = {}
+        self.layer_items = {}
+        self.expanded_layers = {"External", "Contour", "Fill"}  # Expand all by default
 
         for name in ["External", "Contour", "Fill"]:
-            layer_item = self._create_layer_item(name)
-            self.tree.addTopLevelItem(layer_item)
-            self.layers[name] = layer_item
-
-            button_container = self._create_layer_button_container(name, layer_item)
-            self.tree.setItemWidget(layer_item, 1, button_container)
-
-        # Expand all layers by default
-        for layer_item in self.layers.values():
-            layer_item.setExpanded(True)
+            self._create_layer_item(name)
 
     def _create_layer_item(self, name):
         """Create a layer item with proper configuration"""
-        layer_item = QTreeWidgetItem([name, ""])
-        layer_item.setFlags(layer_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
-        layer_item.setFont(0, QFont("Arial", 16, QFont.Weight.Bold))
-        return layer_item
+        # Create list item
+        item = QListWidgetItem()
+        item.setSizeHint(QSize(0, 80))
 
-    def _create_layer_button_container(self, layer_name, layer_item):
-        is_locked = self.contour_editor.manager.isLayerLocked(layer_name)
+        # Create item data
+        item_data = ListItemData('layer', layer_name=name)
+        item.setData(Qt.ItemDataRole.UserRole, item_data)
 
-        widget = LayerButtonsWidget(
-            layer_name=layer_name,
-            layer_item=layer_item,
-            on_visibility_toggle=lambda visible: self.set_layer_visibility(layer_name, visible),
-            on_add_segment=self._make_add_segment(layer_name, layer_item),
-            on_lock_toggle=self._make_layer_lock_toggle(layer_name),
+        # Create layer buttons widget
+        is_locked = self.contour_editor.manager.isLayerLocked(name) if self.contour_editor else False
+        layer_buttons = LayerButtonsWidget(
+            layer_name=name,
+            layer_item=item,
+            on_visibility_toggle=lambda visible: self.set_layer_visibility(name, visible),
+            on_add_segment=self._make_add_segment(name, item),
+            on_lock_toggle=self._make_layer_lock_toggle(name),
             is_locked=is_locked
         )
-        return widget
+
+        # Create expandable layer widget
+        expandable_widget = ExpandableLayerWidget(
+            name,
+            layer_buttons,
+            self._on_layer_expand_toggle
+        )
+
+        # Set the initial expanded state
+        is_expanded = name in self.expanded_layers
+        expandable_widget.set_expanded(is_expanded)
+
+        # Add to list
+        self.list.addItem(item)
+        self.list.setItemWidget(item, expandable_widget)
+
+        # Store references
+        self.layers[name] = item_data
+        self.layer_items[name] = item
+
+    def _on_layer_expand_toggle(self, layer_name, is_expanded):
+        """Handle layer expand/collapse"""
+        if is_expanded:
+            self.expanded_layers.add(layer_name)
+        else:
+            self.expanded_layers.discard(layer_name)
+
+        self.refresh_points()
+
+    def _on_segment_expand_toggle(self, seg_index, is_expanded):
+        """Handle segment expand/collapse"""
+        if is_expanded:
+            self.expanded_segments.add(seg_index)
+        else:
+            self.expanded_segments.discard(seg_index)
+
+        self.refresh_points()
 
     def _make_layer_lock_toggle(self, layer_name):
         def toggle_lock(locked):
@@ -142,7 +307,6 @@ class PointManagerWidget(QWidget):
 
         return toggle_lock
 
-
     def _make_add_segment(self, layer_name, layer_item):
         """Create an add segment function"""
 
@@ -151,11 +315,8 @@ class PointManagerWidget(QWidget):
             self.contour_editor.addNewSegment(layer_name)
             self.refresh_points()
 
-            if layer_item:
-                self.tree.expandItem(layer_item)
-
-            # Force UI refresh
-            self.tree.viewport().update()
+            # Ensure layer is expanded
+            self.expanded_layers.add(layer_name)
 
         return add_segment
 
@@ -167,106 +328,135 @@ class PointManagerWidget(QWidget):
 
     def get_current_selected_layer(self):
         """Get the currently selected layer name"""
-        for i in range(self.tree.topLevelItemCount()):
-            top_item = self.tree.topLevelItem(i)
-            if self.tree.currentItem() == top_item or top_item.isSelected():
-                return top_item.text(0)
+        current_item = self.list.currentItem()
+        if current_item:
+            item_data = current_item.data(Qt.ItemDataRole.UserRole)
+            if item_data and item_data.item_type == 'layer':
+                return item_data.layer_name
         return "External"
 
     def refresh_points(self):
-        """Refresh the points display in the tree"""
-        self.tree.blockSignals(True)
-        try:
-            if not self.contour_editor:
-                return
+        """Refresh the points display in the list"""
+        if not self.contour_editor:
+            return
 
-            expanded_paths = self._save_expanded_state()
-            selected_path = self._save_selected_path()
-            # Remember the active segment index
-            active_segment_index = getattr(self.contour_editor.manager, "active_segment_index", None)
+        # Save current state
+        selected_item_data = None
+        current_item = self.list.currentItem()
+        if current_item:
+            selected_item_data = current_item.data(Qt.ItemDataRole.UserRole)
 
-            self._clear_layer_children()
-            self._populate_segments()
+        # Remember the active segment index
+        active_segment_index = getattr(self.contour_editor.manager, "active_segment_index", None)
 
-            self._restore_expanded_state(expanded_paths)
-            self._restore_selected_path(selected_path)
-            # Restore the active segment UI
-            if active_segment_index is not None:
-                self.set_active_segment_ui(active_segment_index)
-        finally:
-            self.tree.blockSignals(False)
+        # Clear all items except layer headers and rebuild
+        self._rebuild_list()
 
-    def _save_expanded_state(self):
-        """Save the current expanded state of tree items"""
-        expanded_paths = set()
+        # Restore selection
+        self._restore_selection(selected_item_data)
 
-        def record_expansion(item, path=""):
-            if item.isExpanded():
-                expanded_paths.add(path)
-            for i in range(item.childCount()):
-                child = item.child(i)
-                record_expansion(child, f"{path}/{child.text(0)}")
+        # Restore the active segment UI
+        if active_segment_index is not None:
+            self.set_active_segment_ui(active_segment_index)
 
-        for i in range(self.tree.topLevelItemCount()):
-            item = self.tree.topLevelItem(i)
-            record_expansion(item, item.text(0))
+    def _rebuild_list(self):
+        """Rebuild the entire list structure"""
+        # Clear current list
+        self.list.clear()
+        self.layer_items = {}
+        self.segment_items = {}
 
-        return expanded_paths
+        # Recreate layer items
+        for layer_name in ["External", "Contour", "Fill"]:
+            self._create_layer_item(layer_name)
 
-    def _save_selected_path(self):
-        """Save the path to the currently selected item"""
-        selected_item = self.tree.currentItem()
-        if not selected_item:
-            return None
+            # Add segments for this layer if expanded
+            if layer_name in self.expanded_layers:
+                self._add_segments_for_layer(layer_name)
 
-        path = []
-        node = selected_item
-        while node:
-            path.insert(0, node.text(0))
-            node = node.parent()
-        return "/".join(path)
+    def _add_segments_for_layer(self, layer_name):
+        """Add segments for a specific layer"""
+        if not self.contour_editor:
+            return
 
-    def _clear_layer_children(self):
-        """Clear all children from layer items"""
-        for layer_item in self.layers.values():
-            layer_item.takeChildren()
-
-    def _populate_segments(self):
-        """Populate segments in the tree structure"""
         segments = self.contour_editor.manager.get_segments()
-        print(f"Segments: {segments}")
 
         for seg_index, segment in enumerate(segments):
             layer = getattr(segment, "layer")
-            if layer is None:
+            if layer is None or layer.name != layer_name:
                 continue
 
-            print(f"Segment {seg_index}: Layer = {layer}")
-            layer_name = layer.name
+            self._add_segment_item(seg_index, segment, layer_name)
 
-            parent_layer = self.layers.get(layer_name)
+            # Add points for this segment if expanded
+            if seg_index in self.expanded_segments:
+                self._add_points_for_segment(seg_index, segment)
 
-            # Create layer dynamically if it doesn't exist
-            if not parent_layer:
-                print(f"Warning: Layer '{layer_name}' not found, creating it.")
-                parent_layer = self._create_layer_item(layer_name)
-                self.layers[layer_name] = parent_layer
-                self.tree.addTopLevelItem(parent_layer)
+    def _add_segment_item(self, seg_index, segment, layer_name):
+        """Add a segment item to the list"""
+        # Create list item
+        item = QListWidgetItem()
+        item.setSizeHint(QSize(0, 100))
 
-            # Create segment item
-            seg_item = QTreeWidgetItem([f"S{seg_index}", ""])
-            seg_item.setFlags(seg_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            seg_item.setFont(0, QFont("Arial", 14))
-            parent_layer.addChild(seg_item)
+        # Create item data
+        item_data = ListItemData('segment', layer_name=layer_name, seg_index=seg_index)
+        item.setData(Qt.ItemDataRole.UserRole, item_data)
 
-            # Create segment control widgets
-            seg_container = self._create_segment_container(seg_item, seg_index, segment, layer_name)
-            self.tree.setItemWidget(seg_item, 1, seg_container)
+        # Create segment container
+        seg_container = self._create_segment_container(item, seg_index, segment, layer_name)
 
-            # Add point children
-            self._add_anchor_and_control_points(seg_item, segment)
+        # Create expandable segment widget
+        expandable_widget = ExpandableSegmentWidget(
+            seg_index,
+            seg_container,
+            self._on_segment_expand_toggle
+        )
 
-        print("Segments populated.")
+        # Set the initial expanded state
+        is_expanded = seg_index in self.expanded_segments
+        expandable_widget.set_expanded(is_expanded)
+
+        # Create indented widget
+        indented_widget = IndentedWidget(expandable_widget, indent_level=1)
+
+        # Add to list
+        self.list.addItem(item)
+        self.list.setItemWidget(item, indented_widget)
+
+        # Store reference
+        self.segment_items[seg_index] = item
+
+    def _add_points_for_segment(self, seg_index, segment):
+        """Add point items for a specific segment"""
+        # Add anchor points
+        for i, pt in enumerate(segment.points):
+            coords = f"({pt.x():.1f}, {pt.y():.1f})" if isinstance(pt, QPointF) else "Invalid"
+            self._add_point_item(f"P{i}", coords, seg_index, i, 'anchor')
+
+        # Add control points
+        for i, ctrl in enumerate(segment.controls):
+            coords = f"({ctrl.x():.1f}, {ctrl.y():.1f})" if isinstance(ctrl, QPointF) else "Invalid"
+            self._add_point_item(f"C{i}", coords, seg_index, i, 'control')
+
+    def _add_point_item(self, label, coordinates, seg_index, point_index, point_type):
+        """Add a point item to the list"""
+        # Create list item
+        item = QListWidgetItem()
+        item.setSizeHint(QSize(0, 30))
+
+        # Create item data
+        item_data = ListItemData('point', seg_index=seg_index, point_index=point_index, point_type=point_type)
+        item.setData(Qt.ItemDataRole.UserRole, item_data)
+
+        # Create point widget
+        point_widget = PointWidget(label, coordinates)
+
+        # Create indented widget
+        indented_widget = IndentedWidget(point_widget, indent_level=2)
+
+        # Add to list
+        self.list.addItem(item)
+        self.list.setItemWidget(item, indented_widget)
 
     def _create_segment_container(self, seg_item, seg_index, segment, layer_name):
         def on_visibility(btn):
@@ -287,6 +477,9 @@ class PointManagerWidget(QWidget):
         def on_layer_change(new_layer_name):
             self.assign_segment_layer(seg_index, new_layer_name)
 
+        def on_long_press(seg_index):
+            print(f"Long press detected on segment {seg_index}!")
+
         return SegmentButtonsAndComboWidget(
             seg_index=seg_index,
             segment=segment,
@@ -295,10 +488,11 @@ class PointManagerWidget(QWidget):
             on_activate=on_activate,
             on_delete=on_delete,
             on_settings=on_settings,
-            on_layer_change=on_layer_change
+            on_layer_change=on_layer_change,
+            on_long_press = on_long_press
         )
 
-    def _show_settings_dialog(self,seg_index, segment):
+    def _show_settings_dialog(self, seg_index, segment):
         # Prepare input keys for the settings widget
         inputKeys = [key.value for key in GlueSettingKey]
         if GlueSettingKey.GLUE_TYPE.value in inputKeys:
@@ -330,64 +524,40 @@ class PointManagerWidget(QWidget):
         layer = getattr(segment, "layer", None)
         layer_name = layer.name if layer else "Unknown"
         print(f"Settings button clicked for segment {seg_index} (Layer: {layer_name})")
-        self._show_settings_dialog(seg_index,segment)
+        self._show_settings_dialog(seg_index, segment)
 
-
-
-    def _add_anchor_and_control_points(self, seg_item, segment):
-        """Add anchor and control points as children of the segment item"""
-        # Add anchor points
-        for i, pt in enumerate(segment.points):
-            coords = f"({pt.x():.1f}, {pt.y():.1f})" if isinstance(pt, QPointF) else "Invalid"
-            pt_item = QTreeWidgetItem([f"P{i}", coords])
-            pt_item.setFont(0, QFont("Arial", 12))
-            pt_item.setForeground(0, QColor("#0066cc"))
-            seg_item.addChild(pt_item)
-
-        # Add control points
-        for i, ctrl in enumerate(segment.controls):
-            coords = f"({ctrl.x():.1f}, {ctrl.y():.1f})" if isinstance(ctrl, QPointF) else "Invalid"
-            ctrl_item = QTreeWidgetItem([f"C{i}", coords])
-            ctrl_item.setFont(0, QFont("Arial", 12))
-            ctrl_item.setForeground(0, QColor("#cc6600"))
-            seg_item.addChild(ctrl_item)
-
-    def _restore_expanded_state(self, expanded_paths):
-        """Restore the expanded state of tree items"""
-
-        def restore_expansion(item, path=""):
-            if path in expanded_paths:
-                item.setExpanded(True)
-            for i in range(item.childCount()):
-                child = item.child(i)
-                restore_expansion(child, f"{path}/{child.text(0)}")
-
-        for i in range(self.tree.topLevelItemCount()):
-            item = self.tree.topLevelItem(i)
-            restore_expansion(item, item.text(0))
-
-    def _restore_selected_path(self, selected_path):
-        """Restore the selected item based on saved path"""
-        if not selected_path:
+    def _restore_selection(self, selected_item_data):
+        """Restore the selected item based on saved data"""
+        if not selected_item_data:
             return
 
-        def find_item_by_path(root, path_parts):
-            if not path_parts:
-                return root
-            for i in range(root.childCount()):
-                child = root.child(i)
-                if child.text(0) == path_parts[0]:
-                    return find_item_by_path(child, path_parts[1:])
-            return None
+        # Find matching item in the current list
+        for i in range(self.list.count()):
+            item = self.list.item(i)
+            item_data = item.data(Qt.ItemDataRole.UserRole)
 
-        path_parts = selected_path.split("/")
-        for i in range(self.tree.topLevelItemCount()):
-            item = self.tree.topLevelItem(i)
-            if item.text(0) == path_parts[0]:
-                target = find_item_by_path(item, path_parts[1:])
-                if target:
-                    self.tree.setCurrentItem(target)
-                    break
+            if self._items_match(item_data, selected_item_data):
+                self.list.setCurrentItem(item)
+                break
+
+    def _items_match(self, item_data1, item_data2):
+        """Check if two item data objects represent the same item"""
+        if not item_data1 or not item_data2:
+            return False
+
+        if item_data1.item_type != item_data2.item_type:
+            return False
+
+        if item_data1.item_type == 'layer':
+            return item_data1.layer_name == item_data2.layer_name
+        elif item_data1.item_type == 'segment':
+            return item_data1.seg_index == item_data2.seg_index
+        elif item_data1.item_type == 'point':
+            return (item_data1.seg_index == item_data2.seg_index and
+                    item_data1.point_index == item_data2.point_index and
+                    item_data1.point_type == item_data2.point_type)
+
+        return False
 
     def set_active_segment_ui(self, seg_index):
         """Update UI to reflect the active segment"""
@@ -395,22 +565,67 @@ class PointManagerWidget(QWidget):
         print(f"[DEBUG] Set active segment to {seg_index}")
 
         # Update all segment active buttons
-        for i in range(self.tree.topLevelItemCount()):
-            layer_item = self.tree.topLevelItem(i)
-            for j in range(layer_item.childCount()):
-                seg_item = layer_item.child(j)
-                is_active = seg_item.text(0) == f"S{seg_index}"
+        for i in range(self.list.count()):
+            item = self.list.item(i)
+            item_data = item.data(Qt.ItemDataRole.UserRole)
 
-                container = self.tree.itemWidget(seg_item, 1)
-                if container:
-                    buttons = container.findChildren(QPushButton)
-                    for btn in buttons:
-                        if btn.toolTip() == "Set as active segment":
-                            print("setting active button for segment", seg_index)
-                            btn.setIcon(QIcon(ACTIVE_ICON if is_active else INACTIVE_ICON))
+            if item_data and item_data.item_type == 'segment':
+                is_active = item_data.seg_index == seg_index
 
-        self.tree.viewport().update()
-        self.contour_editor.update()
+                # Get the item widget (IndentedWidget)
+                indented_widget = self.list.itemWidget(item)
+                if indented_widget:
+                    # Navigate: IndentedWidget -> ExpandableSegmentWidget -> SegmentButtonsAndComboWidget
+                    expandable_segment = indented_widget.layout().itemAt(0).widget()
+                    if expandable_segment and hasattr(expandable_segment, 'layout'):
+                        # Get the SegmentButtonsAndComboWidget (second item in layout, after expand button)
+                        segment_buttons_widget = expandable_segment.layout().itemAt(1).widget()
+                        if segment_buttons_widget:
+                            # Find the active button specifically
+                            active_btn = getattr(segment_buttons_widget, 'active_btn', None)
+                            if active_btn:
+                                print(
+                                    f"Updating active button for segment {item_data.seg_index}, is_active: {is_active}")
+                                active_btn.setIcon(QIcon(ACTIVE_ICON if is_active else INACTIVE_ICON))
+                            index_label = getattr(segment_buttons_widget, 'index_label', None)
+
+                            if index_label:
+                                if is_active:
+                                    index_label.setText(f"S{item_data.seg_index}")
+                                    index_label.setStyleSheet("""
+                                        QPushButton {
+                                            background-color: #7E6DAD;
+                                            color: white;
+                                            border-radius: 15px;
+                                            font-weight: bold;
+                                            text-align: center;
+                                            padding: 0px;
+                                            min-width: 50px;
+                                            min-height: 50px;
+                                            max-width: 50px;
+                                            max-height: 50px;
+                                        }
+                                    """)
+                                else:
+                                    index_label.setText(f"S{item_data.seg_index}")
+                                    index_label.setStyleSheet("""
+                                        QPushButton {
+                                            background-color: #f0f0f0;
+                                            color: #666;
+                                            border-radius: 15px;
+                                            font-weight: normal;
+                                            text-align: center;
+                                            padding: 0px;
+                                            border: 1px solid #ddd;
+                                            min-width: 50px;
+                                            min-height: 50px;
+                                            max-width: 50px;
+                                            max-height: 50px;
+                                        }
+                                    """)
+        self.list.viewport().update()
+        if self.contour_editor:
+            self.contour_editor.update()
 
     def delete_segment(self, seg_index):
         """Delete a segment"""
@@ -428,77 +643,36 @@ class PointManagerWidget(QWidget):
             self.refresh_points()
             self.contour_editor.update()
 
-    def handle_segment_toggle(self, item, column):
-        """Handle segment toggle events"""
-        if not self.contour_editor:
-            return
-
-        # Layer visibility toggle
-        if item.parent() is None and column == 0:
-            layer_name = item.text(0)
-            visible = item.checkState(0) == Qt.CheckState.Checked
-            self.set_layer_visibility(layer_name, visible)
-            self.contour_editor.update()
-            return
-
-        # Segment visibility toggle
-        if item.parent() and column == 0:
-            seg_text = item.text(0)
-            if seg_text.startswith("S"):
-                try:
-                    seg_index = int(seg_text[1:])
-                    visible = item.checkState(0) == Qt.CheckState.Checked
-                    self.contour_editor.manager.set_segment_visibility(seg_index, visible)
-                    self.contour_editor.update()
-                except Exception as e:
-                    print(f"[Error] segment visibility toggle: {e}")
-                return
-
-        # Segment activation toggle
-        if item.parent() and column == 2:
-            seg_text = item.text(0)
-            if seg_text.startswith("S"):
-                try:
-                    seg_index = int(seg_text[1:])
-                    self.tree.blockSignals(True)
-                    self.set_active_segment_ui(seg_index)
-                    self.tree.blockSignals(False)
-                except Exception as e:
-                    print(f"[Error] handle_segment_toggle: {e}")
-
     def highlight_selected_point(self, item):
         """Handle point selection and highlighting"""
         if not item or not self.contour_editor:
             print("No item selected.")
             return
 
-        print(f"Item clicked: {item.text(0)}")
+        item_data = item.data(Qt.ItemDataRole.UserRole)
+        if not item_data:
+            return
+
+        print(f"Item clicked: {item_data.item_type}")
 
         try:
             # Handle segment selection
-            if item.text(0).startswith("S"):
-                seg_index = int(item.text(0)[1:])
-                self.tree.blockSignals(True)
-                self.set_active_segment_ui(seg_index)
-                self.tree.blockSignals(False)
+            if item_data.item_type == 'segment':
+                self.set_active_segment_ui(item_data.seg_index)
                 return
 
             # Handle point selection
-            parent = item.parent()
-            if parent and parent.text(0).startswith("S"):
-                seg_index = int(parent.text(0)[1:])
-                label = item.text(0)
+            elif item_data.item_type == 'point':
+                seg_index = item_data.seg_index
+                point_index = item_data.point_index
+                point_type = item_data.point_type
 
-                if label.startswith("P"):
-                    idx = int(label[1:])
-                    self.contour_editor.selected_point_info = ('anchor', seg_index, idx)
-                elif label.startswith("C"):
-                    idx = int(label[1:])
-                    self.contour_editor.selected_point_info = ('control', seg_index, idx)
+                if point_type == 'anchor':
+                    self.contour_editor.selected_point_info = ('anchor', seg_index, point_index)
+                elif point_type == 'control':
+                    self.contour_editor.selected_point_info = ('control', seg_index, point_index)
 
-                self.tree.blockSignals(True)
                 self.set_active_segment_ui(seg_index)
-                self.tree.blockSignals(False)
 
         except Exception as e:
             print(f"Selection error: {e}")

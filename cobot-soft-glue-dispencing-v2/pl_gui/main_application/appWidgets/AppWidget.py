@@ -37,6 +37,8 @@ class AppWidget(QWidget):
         """Close this app and return to main view"""
         self.app_closed.emit()
 
+    def clean_up(self):
+        pass
 
 if __name__ == "__main__":
     from PyQt6.QtWidgets import QApplication

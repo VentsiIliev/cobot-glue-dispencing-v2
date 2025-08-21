@@ -7,6 +7,7 @@ class ContourEditorAppWidget(AppWidget):
     def __init__(self, parent=None,controller=None):
         self.controller = controller
         self.parent = parent
+        self.content_widget = None
         super().__init__("Contour Editor", parent)
     def setup_ui(self):
         """Setup the user management specific UI"""
@@ -26,6 +27,8 @@ class ContourEditorAppWidget(AppWidget):
 
             layout.addWidget(self.content_widget)
         except ImportError:
+            import traceback
+            traceback.print_exc()
             # Keep the placeholder if the UserManagementWidget is not available
             print("Contour Editor not available, using placeholder")
 

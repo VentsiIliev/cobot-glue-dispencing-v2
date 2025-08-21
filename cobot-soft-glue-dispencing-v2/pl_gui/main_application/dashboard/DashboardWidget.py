@@ -326,6 +326,7 @@ class DashboardWidget(QWidget):
             "Glue 3": lambda: self.create_glue_card(3, "Glue 3"),
         }
 
+        self._broker_callbacks = []  # store (topic, callback) pairs
         self.glueMetersCount = 3
         self.glueMeters = []
         self.predefined_cards = []
@@ -347,10 +348,15 @@ class DashboardWidget(QWidget):
         preview_widget = QWidget()
         preview_layout = QVBoxLayout(preview_widget)
         preview_layout.setContentsMargins(0, 0, 0, 0)
+        preview_layout.setSpacing(0)
 
-        self.trajectory_widget = SmoothTrajectoryWidget(image_width=640, image_height=480)
+        self.trajectory_widget = SmoothTrajectoryWidget(image_width=640, image_height=360)
+        # self.trajectory_widget.setFixedSize(640,360)
         self.trajectory_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.trajectory_widget.setMinimumHeight(240)
+        broker = MessageBroker()
+        broker.subscribe("robot/trajectory/updateImage", self.trajectory_widget.set_image)
+        broker.subscribe("robot/trajectory/point", self.trajectory_widget.update)
 
         preview_layout.addWidget(self.trajectory_widget)
         top_section.addWidget(preview_widget, stretch=3)  # takes 3/4 width
@@ -390,6 +396,7 @@ class DashboardWidget(QWidget):
 
         for row in range(2):
             for col in range(3):
+
                 if row == 0 and col == 2:
                     # Place the control buttons widget spanning both rows in column 2
                     placeholders_layout.addWidget(self.control_buttons, row, col, 2, 1)  # span 2 rows
@@ -397,6 +404,7 @@ class DashboardWidget(QWidget):
                 elif row == 1 and col == 2:
                     # Skip this cell as it's already occupied by the control buttons widget
                     continue
+
                 else:
                     placeholder_frame = QFrame()
                     placeholder_frame.setStyleSheet(
@@ -431,8 +439,15 @@ class DashboardWidget(QWidget):
 
         # Subscribe to message broker
         broker = MessageBroker()
-        broker.subscribe(f"GlueMeter_{index}/VALUE", meter.updateWidgets)
-        broker.subscribe(f"GlueMeter_{index}/STATE", meter.updateState)
+        cb1 = meter.updateWidgets
+        cb2 = meter.updateState
+        broker.subscribe(f"GlueMeter_{index}/VALUE", cb1)
+        broker.subscribe(f"GlueMeter_{index}/STATE", cb2)
+
+        self._broker_callbacks.extend([
+            (f"GlueMeter_{index}/VALUE", cb1),
+            (f"GlueMeter_{index}/STATE", cb2)
+        ])
 
         # Create the combo box
         glue_type_combo = QComboBox()
@@ -456,9 +471,9 @@ class DashboardWidget(QWidget):
 
         glue_type_combo.setStyleSheet(f"""
             QComboBox#glue_combo_{index} {{
-                background: {base_color};
-                color: white;
-                border: none;
+                background: white;
+                color: black;
+                border: 2px solid {base_color};
                 border-radius: 14px;
                 padding: 4px 12px;
                 font-size: 11px;
@@ -496,11 +511,13 @@ class DashboardWidget(QWidget):
                 selection-background-color: {base_color};
                 border-radius: 8px;
                 outline: none;
+                font-size: 16px;
             }}
             QComboBox#glue_combo_{index} QAbstractItemView::item {{
                 padding: 6px 12px;
                 border: none;
                 color: #000000;
+                font-size: 32px;
             }}
             QComboBox#glue_combo_{index} QAbstractItemView::item:hover {{
                 background-color: {lighter};
@@ -517,6 +534,24 @@ class DashboardWidget(QWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         # Resize event handling can be added here if needed
+
+    def clean_up(self):
+        """Clean up resources when the widget is closed"""
+        print("Cleaning up DashboardWidget")
+        broker = MessageBroker()
+        for topic, cb in self._broker_callbacks:
+            broker.unsubscribe(topic, cb)
+
+        broker.unsubscribe("robot/trajectory/updateImage", self.trajectory_widget.set_image)
+        broker.unsubscribe("robot/trajectory/point", self.trajectory_widget.update)
+
+        self._broker_callbacks.clear()
+        # Clear the shared card container
+        self.shared_card_container = None
+
+        broker.unsubscribe("robot/trajectory/updateImage", self.trajectory_widget.set_image)
+        broker.unsubscribe("robot/trajectory/point", self.trajectory_widget.update)
+        self.control_buttons.clean_up()
 
 
 if __name__ == "__main__":

@@ -22,12 +22,31 @@ from GlueDispensingApplication.tools.nozzles.Tool3 import Tool3
 from GlueDispensingApplication.tools.Laser import Laser
 from GlueDispensingApplication.robot import RobotUtils
 from GlueDispensingApplication.tools.ToolChanger import ToolChanger
-
+import enum
 from API.shared.Contour import Contour
-
+from GlueDispensingApplication.SystemStatePublisherThread import SystemStatePublisherThread
 import threading
 import time
 import math
+
+class RobotServiceState(enum.Enum):
+    INITIALIZING = "initializing"
+    IDLE = "idle"
+    STARTING = "starting"
+    MOVING_TO_FIRST_POINT = "moving_to_first_point"
+    EXECUTING_PATH = "executing_path_state"
+    TRANSITION_BETWEEN_PATHS = "transition_between_paths"
+    TRACING_CONTOURS = "tracing_contours"
+    PERFORMING_NESTING = "performing_nesting"
+    COMPLETED = "completed"
+    ERROR = "error"
+
+class RobotState(enum.Enum):
+    STATIONARY = "stationary"
+    ACCELERATING = "accelerating"
+    DECELERATING = "decelerating"
+    MOVING = "moving"
+    ERROR = "error"
 
 
 class RobotStateManager:
@@ -36,7 +55,8 @@ class RobotStateManager:
         self.pos = None
         self.speed = 0.0
         self.accel = 0.0
-        self.state = "stationary"  # Initial state
+        self.robotStateTopic = "robot/state"
+        self.robotState = RobotState.STATIONARY  # Initial state
 
         self.prev_pos = None
         self.prev_time = None
@@ -61,18 +81,26 @@ class RobotStateManager:
     def update_state(self):
         """Update robot motion state based on speed and acceleration."""
         if abs(self.speed) < self.speed_threshold:
-            self.state = "stationary"
+            self.robotState = RobotState.STATIONARY
         elif self.accel > self.accel_threshold:
-            self.state = "accelerating"
+            self.robotState = RobotState.ACCELERATING
         elif self.accel < -self.accel_threshold:
-            self.state = "decelerating"
+            self.robotState = RobotState.DECELERATING
         else:
-            self.state = "moving"
+            self.robotState = RobotState.MOVING
 
     def fetch_position(self):
         while not self._stop_event.is_set():
             current_time = time.time()
-            current_pos = self.robot.getCurrentPosition()
+            try:
+                current_pos = self.robot.getCurrentPosition()
+            except:
+                self.robotState = RobotState.ERROR
+                continue
+
+            if current_pos == None:
+                self.robotState = RobotState.ERROR
+
             self.pos = current_pos
 
 
@@ -85,9 +113,9 @@ class RobotStateManager:
 
                 # Determine current robot state
                 self.update_state()
-                self.broker.publish("robot/state", {"state": self.state, "speed": self.speed, "accel": self.accel})
+                self.broker.publish(self.robotStateTopic, {"state": self.robotState, "speed": self.speed, "accel": self.accel})
 
-                if self.state != "stationary" and self.trajectoryUpdate:
+                if self.robotState != RobotState.STATIONARY and self.trajectoryUpdate:
 
                     x = current_pos[0]
                     y = current_pos[1]
@@ -117,50 +145,6 @@ class RobotStateManager:
         self._thread.join()
 
 
-
-
-class VelocityFetcher:
-    def __init__(self, robot, delayBetweenRequests=0.01):
-        self.robot = robot
-        # self.robot = RobotWrapper(ROBOT_IP)
-        self.delay = delayBetweenRequests
-        # self.robot = robot
-        self.vel = 0
-        self._stop_event = threading.Event()
-
-    def fetch_speed(self):
-        prev_cycle_start = None  # For tracking time between cycles
-        while not self._stop_event.is_set():
-            try:
-                cycle_start = time.time()
-
-                if prev_cycle_start is not None:
-                    cycle_interval = (cycle_start - prev_cycle_start) * 1000  # ms
-
-                    # print(f"Time since last cycle: {cycle_interval:.3f} ms VELOCITY: {self.vel[1][0]:.2f} mm/s")
-                prev_cycle_start = cycle_start
-
-                # --- Fetch velocity ---
-                self.vel = self.robot.robot.GetActualJointSpeedsDegree(flag=1)
-                print(f"Vel: {self.vel} Pump Speed: {self.vel[1][0] * 40}", )
-                with open('/home/plp/cobot-soft/Cobot-Glue-Nozzle/speedData1', 'a') as f:
-                    f.write(f"Vel: {self.vel[1][0]} Pump Speed: {self.vel[1][0] * 40} \n")
-
-                # --- Sleep delay ---
-                time.sleep(self.delay)
-
-            except Exception as e:
-                print("Exception reading vel:", e)
-
-    def start_thread(self):
-        self._thread = threading.Thread(target=self.fetch_speed)
-        self._thread.start()
-
-    def stop_thread(self):
-        self._stop_event.set()
-        self._thread.join()
-
-
 class RobotService:
     """
      RobotService is a service layer to control and manage robot movements,
@@ -183,18 +167,24 @@ class RobotService:
                    settingsService: Settings service to fetch robot motion parameters
                    glueNozzleService (GlueNozzleService, optional): Glue nozzle control service
                """
+
         self.logTag = "RobotService"
+        self.stateTopic = "robot-service/state"
+        self.state= RobotServiceState.INITIALIZING
+        self.broker = MessageBroker()
+        self.statePublisherThread = SystemStatePublisherThread(self.publishState, 0.1)
+        self.statePublisherThread.start()
+
         self.robot = robot
         self.robot.printSdkVersion()
+        self.robotStateManager = RobotStateManager()
+        self.robotStateManager.start_thread()
+        self.robotState = None
+        self.broker.subscribe(self.robotStateManager.robotStateTopic, self.onRobotStateUpdate)
+
         self.pump = VacuumPump()
         self.laser = Laser()
-        self.positionFetcher = RobotStateManager()
-        self.positionFetcher.start_thread()
 
-        # self.positionFether.start_thread()
-
-        # self.velFetcher = VelocityFetcher(self.robot)
-        # self.velFetcher.start_thread()
 
         # TODO: FINISH IMPLEMENTATION FOR ROBOT SETTINGS
         self.settingsService = settingsService
@@ -208,13 +198,17 @@ class RobotService:
         self.toolChanger = ToolChanger()
         self.commandQue = queue.Queue()
         self._stop_thread = threading.Event()
-        self.createVelFetcher()
 
-    def createVelFetcher(self):
+    def onRobotStateUpdate(self,state):
+        self.robotState = state['state']
 
-        # self.robot2 = RobotWrapper(ROBOT_IP)
-        self.velFetcher = VelocityFetcher(self.robot, delayBetweenRequests=0.01)
-        # self.velFetcher.start_thread()
+        if self.state == RobotServiceState.INITIALIZING and self.robotState == RobotState.STATIONARY:
+            self.state = RobotServiceState.IDLE
+
+
+    def publishState(self):
+        # print("Publishing state:", self.state)
+        self.broker.publish(self.stateTopic,self.state)
 
     def getMotionParams(self):
         """
@@ -423,12 +417,7 @@ class RobotService:
         from API.shared.settings.conreateSettings.enums.GlueSettingKey import GlueSettingKey
         from API.shared.settings.conreateSettings.enums.RobotSettingKey import RobotSettingKey
 
-        MOVING_TO_FIRST_POINT_STATE = "1"
-        EXECUTING_PATH_STATE = "2"
-        TRANSITION_BETWEEN_PATHS_STATE = "3"
-        COMPLETED_STATE = "4"
-
-        CURRENT_STATE = MOVING_TO_FIRST_POINT_STATE
+        self.state = RobotServiceState.STARTING
 
         service = GlueSprayService(generatorTurnOffTimeout=10)
         glueType = service.glueB_addresses
@@ -440,9 +429,9 @@ class RobotService:
         delay = 1
         generator_to_glue_delay = 0
 
-        while CURRENT_STATE != COMPLETED_STATE:
-            print("Current State:", CURRENT_STATE)
-            if CURRENT_STATE == MOVING_TO_FIRST_POINT_STATE:
+        while self.state != RobotServiceState.COMPLETED:
+            print("Current State:", self.state)
+            if self.state == RobotServiceState.STARTING:
                 # Unpack settings for the current path
                 path, settings = paths[current_path_index]
                 velocity = settings.get(RobotSettingKey.VELOCITY.value)
@@ -459,7 +448,11 @@ class RobotService:
 
                 # Move to the first point
                 try:
-                    self.robot.moveCart(path[0], ROBOT_TOOL, ROBOT_USER, vel=30, acc=80)
+                    ret = self.robot.moveCart(path[0], ROBOT_TOOL, ROBOT_USER, vel=30, acc=80)
+                    if ret != 0:
+                        self.state = RobotServiceState.ERROR
+                    else:
+                        self.state = RobotServiceState.MOVING_TO_FIRST_POINT
                 except:
                     # service.generatorOff()
                     print("Robot could not reach start position, stopping glue dispensing")
@@ -474,10 +467,10 @@ class RobotService:
 
                 # time.sleep(time_before_motion)
 
-                CURRENT_STATE = EXECUTING_PATH_STATE
+                self.state = RobotServiceState.EXECUTING_PATH
 
-            elif CURRENT_STATE == EXECUTING_PATH_STATE:
-                self.positionFetcher.trajectoryUpdate = True
+            elif self.state == RobotServiceState.EXECUTING_PATH:
+                self.robotStateManager.trajectoryUpdate = True
                 path, settings = paths[current_path_index]
                 velocity = settings.get(RobotSettingKey.VELOCITY.value)
                 acceleration = settings.get(RobotSettingKey.ACCELERATION.value)
@@ -486,23 +479,31 @@ class RobotService:
                 reach_end_threshold = float(settings.get(GlueSettingKey.REACH_END_THRESHOLD.value))
 
                 for point in path:
-                    self.robot.moveL(point, ROBOT_TOOL, ROBOT_USER, vel=velocity, acc=acceleration, blendR=1)
-                    # self.adjustPumpSpeedWhileRobotIsMoving(service, glue_speed_coefficient, glueType, pumpSpeed, point,
-                    #                                        reach_end_threshold)
-                    # self._waitForRobotToReachPosition(point, reach_end_threshold, 0.1)
+                    ret = self.robot.moveL(point, ROBOT_TOOL, ROBOT_USER, vel=velocity, acc=acceleration, blendR=1)
+                    if ret != 0:
+                        print(f"MoveL to point {point} failed with error code {ret}")
+                        self.state = RobotServiceState.ERROR
+                    else:
+                        # self.adjustPumpSpeedWhileRobotIsMoving(service, glue_speed_coefficient, glueType, pumpSpeed, point,
+                        #                                        reach_end_threshold)
+                        # self._waitForRobotToReachPosition(point, reach_end_threshold, 0.1)
+                        pass
+
                 # service.motorOff(glueType, speedReverse=speedReverse, delay=reverseDuration)
                 # self.positionFetcher.trajectoryUpdate=False
-                CURRENT_STATE = TRANSITION_BETWEEN_PATHS_STATE
+                self.state = RobotServiceState.TRANSITION_BETWEEN_PATHS
 
-            elif CURRENT_STATE == TRANSITION_BETWEEN_PATHS_STATE:
+            elif self.state == RobotServiceState.TRANSITION_BETWEEN_PATHS:
                 current_path_index += 1
                 if current_path_index >= len(paths):
-                    CURRENT_STATE = COMPLETED_STATE
+                    self.state = RobotServiceState.COMPLETED
                 else:
-                    CURRENT_STATE = MOVING_TO_FIRST_POINT_STATE
+                    self.state = RobotServiceState.MOVING_TO_FIRST_POINT
+
 
             else:
-                raise ValueError(f"Invalid state: {CURRENT_STATE}")
+                raise ValueError(f"Invalid state: {self.state}")
+
 
         # Final cleanup after all paths
         # time.sleep(delay)
@@ -522,20 +523,20 @@ class RobotService:
         glueSprayService.motorOn(2,10000)
         time.sleep(1)
         while True:
-            currentVel = self.positionFetcher.speed
-            accel = self.positionFetcher.accel
+            currentVel = self.robotStateManager.speed
+            accel = self.robotStateManager.accel
 
             # Following error compensation (1st order)
-            predicted_following_error = self.positionFetcher.following_error_gain * currentVel
+            predicted_following_error = self.robotStateManager.following_error_gain * currentVel
 
             # Optional 2nd order: account for accel lag
             if use_second_order:
-                predicted_following_error += (self.positionFetcher.following_error_gain * 0.5) * accel
+                predicted_following_error += (self.robotStateManager.following_error_gain * 0.5) * accel
 
             adjustedPumpSpeed = (currentVel + predicted_following_error) * glue_speed_coefficient
             glueSprayService.motorOn(motorAddress, adjustedPumpSpeed)
 
-            currentPos = self.positionFetcher.pos
+            currentPos = self.robotStateManager.pos
             distance = math.sqrt(
                 (currentPos[0] - endPoint[0]) ** 2 +
                 (currentPos[1] - endPoint[1]) ** 2 +
@@ -575,24 +576,25 @@ class RobotService:
                threshold (float): Allowed deviation
                delay (float): Delay between position checks
            """
-        # self.positionFether.start_thread()
         while True:
-            time.sleep(delay)
-            print(f"     Waiting for robot to reach end point: {threshold} ")
-            currentPos = self.robot.getCurrentPosition()
-            if currentPos is None:
+            state = self.robotStateManager.robotState
+            if state == RobotState.STATIONARY:
                 break
-            # Calculate Euclidean distance in XYZ
-            distance = math.sqrt(
-                (currentPos[0] - endPoint[0]) ** 2 +
-                (currentPos[1] - endPoint[1]) ** 2 +
-                (currentPos[2] - endPoint[2]) ** 2
-            )
-            print(f"Distance to end point: {distance:.3f} mm")
-            if distance < threshold:
-                break
+            # time.sleep(delay)
+            # print(f"     Waiting for robot to reach end point: {threshold} ")
+            # currentPos = self.robot.getCurrentPosition()
+            # if currentPos is None:
+            #     break
+            # # Calculate Euclidean distance in XYZ
+            # distance = math.sqrt(
+            #     (currentPos[0] - endPoint[0]) ** 2 +
+            #     (currentPos[1] - endPoint[1]) ** 2 +
+            #     (currentPos[2] - endPoint[2]) ** 2
+            # )
+            # print(f"Distance to end point: {distance:.3f} mm")
+            # if distance < threshold:
+            #     break
 
-        # self.positionFether.stop_thread()
 
     def getCurrentPosition(self):
         """
@@ -1147,19 +1149,4 @@ class RobotService:
 #     robotService.addCommandToQueue(robotService.moveToLoginPosition())
 #     # robotService.addCommandToQueue(robotService.moveToCalibrationPosition())
 
-if __name__ == "__main__":
-    from GlueDispensingApplication.robot.RobotConfig import *
-    from GlueDispensingApplication.robot.RobotWrapper import RobotWrapper
 
-    robot = RobotWrapper(ROBOT_IP)
-    fetcher = VelocityFetcher(robot, delayBetweenRequests=0.01)
-    fetcher.start_thread()
-
-    # fetcher2 = PositionFetcher()
-    # fetcher2.start_thread()
-
-    while True:
-        # print(fetcher.vel)
-        # print(fetcher2.pos)
-        time.sleep(1)
-        continue

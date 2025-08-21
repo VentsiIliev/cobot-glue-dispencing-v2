@@ -64,10 +64,10 @@ class FloatingFolderIcon(QPushButton):
                 self.setIcon(QIcon(scaled_pixmap))
             else:
                 # Fallback to text if image fails to load
-                self.setText("📁")
+                self.setText("☰")
         else:
             # Fallback to text if file doesn't exist
-            self.setText("📁")
+            self.setText("☰")
 
         # Set icon size for the button
         self.setIconSize(QSize(icon_size, icon_size))

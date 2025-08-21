@@ -21,16 +21,16 @@ class DashboardAppWidget(AppWidget):
             # from pl_gui.dashboard.NewDashboardWidget import GlueDashboardWidget
             from pl_gui.Endpoints import UPDATE_CAMERA_FEED
             # Remove the placeholder content
-            content_widget = DashboardWidget(updateCameraFeedCallback=lambda: self.controller.handle(UPDATE_CAMERA_FEED))
-            content_widget.start_requested.connect(self.start_requested.emit)
-            content_widget.glue_type_changed_signal.connect(self.on_glue_type_changed)
+            self.content_widget = DashboardWidget(updateCameraFeedCallback=lambda: self.controller.handle(UPDATE_CAMERA_FEED))
+            self.content_widget.start_requested.connect(self.start_requested.emit)
+            self.content_widget.glue_type_changed_signal.connect(self.on_glue_type_changed)
             # Replace the last widget in the layout (the placeholder) with the real widget
             layout = self.layout()
             old_content = layout.itemAt(layout.count() - 1).widget()
             layout.removeWidget(old_content)
             old_content.deleteLater()
 
-            layout.addWidget(content_widget)
+            layout.addWidget(self.content_widget)
         except ImportError:
             import traceback
             traceback.print_exc()
@@ -46,3 +46,9 @@ class DashboardAppWidget(AppWidget):
         from GlueDispensingApplication.tools.GlueCell import GlueCellsManagerSingleton
         manager = GlueCellsManagerSingleton.get_instance()
         manager.updateGlueTypeById(index,glue_type)
+
+    def clean_up(self):
+        """Clean up resources when the widget is closed"""
+        # Perform any necessary cleanup here
+        print("Cleaning up DashboardAppWidget")
+        self.content_widget.clean_up()

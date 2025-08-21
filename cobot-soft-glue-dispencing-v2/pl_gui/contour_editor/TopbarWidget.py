@@ -122,7 +122,9 @@ class TopBarWidget(QWidget):
 
     def onStart(self):
         print("Start button pressed")
+
         if self.onStartCallback:
+
             self.onStartCallback()
 
     def add_spacer(self, layout=None, width=20):

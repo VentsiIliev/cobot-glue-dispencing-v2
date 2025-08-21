@@ -44,7 +44,7 @@ def find_ch341_uart_port():
     return None
 
 def get_modbus_port():
-    return "/dev/ttyS1"
+    # return "/dev/ttyS1"
     if platform.system() == "Windows":
         return "COM5"  # Adjust as necessary
     else:  # Assuming Linux

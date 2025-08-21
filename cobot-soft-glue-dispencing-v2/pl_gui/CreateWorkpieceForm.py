@@ -43,17 +43,17 @@ SPRAY_WIDTH_ICON_PATH = os.path.join(RESOURCE_DIR, "createWorkpieceIcons", "spra
 # Configuration file path
 CONFIG_FILE = "settings/workpiece_form_config.json"
 DEFAULT_FIELD_CONFIG = {
-    WorkpieceField.WORKPIECE_ID.value: {"visible": True, "mandatory": True},
-    WorkpieceField.NAME.value: {"visible": True, "mandatory": True},
+    WorkpieceField.WORKPIECE_ID.value: {"visible": True, "mandatory": False},
+    WorkpieceField.NAME.value: {"visible": True, "mandatory": False},
     WorkpieceField.DESCRIPTION.value: {"visible": True, "mandatory": False},
     WorkpieceField.OFFSET.value: {"visible": True, "mandatory": False},
     WorkpieceField.HEIGHT.value: {"visible": True, "mandatory": False},
     WorkpieceField.GLUE_QTY.value: {"visible": True, "mandatory": False},
     WorkpieceField.SPRAY_WIDTH.value: {"visible": True, "mandatory": False},
-    WorkpieceField.TOOL_ID.value: {"visible": True, "mandatory": True},
-    WorkpieceField.GRIPPER_ID.value: {"visible": True, "mandatory": True},
+    WorkpieceField.TOOL_ID.value: {"visible": True, "mandatory": False},
+    WorkpieceField.GRIPPER_ID.value: {"visible": True, "mandatory": False},
     WorkpieceField.GLUE_TYPE.value: {"visible": True, "mandatory": False},
-    WorkpieceField.PROGRAM.value: {"visible": True, "mandatory": True},
+    WorkpieceField.PROGRAM.value: {"visible": True, "mandatory": False},
     WorkpieceField.MATERIAL.value: {"visible": True, "mandatory": False}
 }
 
@@ -268,36 +268,8 @@ class CreateWorkpieceForm(Drawer,QFrame):
         self._parent = parent
 
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        self.setStyleSheet("""
-                    CreateWorkpieceForm, QWidget#CreateWorkpieceForm {
-                        background-color: white;
-                        border-radius: 12px;
-                        border: 2px solid #905BA9;
-                    }
-                    FocusLineEdit, QLineEdit {
-                        background: #F7F3FA;
-                        border: 1.5px solid #D3D3D3;
-                        border-radius: 8px;
-                        padding: 6px 10px;
-                        font-size: 16px;
-                        color: #3A2C4A;
-                    }
-                    QComboBox {
-                        background: #F7F3FA;
-                        border: 1.5px solid #D3D3D3;
-                        border-radius: 8px;
-                        padding: 6px 10px;
-                        font-size: 16px;
-                        color: #3A2C4A;
-                    }
-                    QComboBox QAbstractItemView {
-                        background: #FFFFFF;
-                        border: 1px solid #905BA9;
-                        selection-background-color: #E1D5EC;
-                        color: #3A2C4A;
-                    }
-                """)
         self.setObjectName("CreateWorkpieceForm")
+        self.apply_stylesheet()
 
         self.onSubmitCallBack = callBack
         self.config_manager = config_manager or FormConfigManager()
@@ -329,6 +301,37 @@ class CreateWorkpieceForm(Drawer,QFrame):
             self.add_button("Cancel", CANCEL_BUTTON_ICON_PATH, button_layout)
             self.settingsLayout.addLayout(button_layout)
 
+    def apply_stylesheet(self):
+        self.setStyleSheet("""
+                            CreateWorkpieceForm, QWidget#CreateWorkpieceForm {
+                                background-color: white;
+                                border-radius: 12px;
+                                border: 2px solid #905BA9;
+                            }
+                            FocusLineEdit, QLineEdit {
+                                background: #F7F3FA;
+                                border: 1.5px solid #D3D3D3;
+                                border-radius: 8px;
+                                padding: 6px 10px;
+                                font-size: 16px;
+                                color: #3A2C4A;
+                            }
+                            QComboBox {
+                                background: #F7F3FA;
+                                border: 1.5px solid #D3D3D3;
+                                border-radius: 8px;
+                                padding: 6px 10px;
+                                font-size: 16px;
+                                color: #3A2C4A;
+                            }
+                            QComboBox QAbstractItemView {
+                                background: #FFFFFF;
+                                border: 1px solid #905BA9;
+                                selection-background-color: #E1D5EC;
+                                color: #3A2C4A;
+                            }
+                        """)
+
     def add_config_button(self):
         """Add configuration button to the form"""
         config_layout = QHBoxLayout()
@@ -338,7 +341,7 @@ class CreateWorkpieceForm(Drawer,QFrame):
         config_button.setMaximumWidth(150)
         config_button.clicked.connect(self.show_config_dialog)
 
-        config_layout.addWidget(config_button)
+        # config_layout.addWidget(config_button)
         self.settingsLayout.addLayout(config_layout)
 
     def show_config_dialog(self):
@@ -558,7 +561,7 @@ class CreateWorkpieceForm(Drawer,QFrame):
         """Cancel the operation and close the form"""
         self.close()
 
-    def create_icon_label(self, path, size=24):
+    def create_icon_label(self, path, size=50):
         """Create a label with an icon, scaled to a specific size"""
         pixmap = QPixmap(path)
         label = QLabel()

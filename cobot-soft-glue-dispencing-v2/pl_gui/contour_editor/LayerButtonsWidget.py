@@ -28,13 +28,20 @@ class LayerButtonsWidget(QWidget):
         layout.setSpacing(8)
         layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
+        self.layer_name_label = QPushButton(layer_name)
+        self.layer_name_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.layer_name_label.setToolTip(f"{layer_name}")
+        self.layer_name_label.setFixedHeight(50)
+        self.layer_name_label.setStyleSheet("text-align: left; padding-left: 10px;")
+        layout.addWidget(self.layer_name_label)
+
         # Visibility Button
         self.visibility_btn = QPushButton("")
         self.visibility_btn.setIcon(QIcon(HIDE_ICON))
         self.visibility_btn.setCheckable(True)
         self.visibility_btn.setChecked(True)
-        self.visibility_btn.setIconSize(QSize(36, 36))
-        self.visibility_btn.setFixedSize(48, 48)
+        self.visibility_btn.setIconSize(QSize(50, 50))
+        self.visibility_btn.setFixedSize(50, 50)
         self.visibility_btn.setToolTip(f"Toggle {layer_name} visibility")
         self.visibility_btn.clicked.connect(self._handle_visibility_toggle)
         layout.addWidget(self.visibility_btn)
@@ -42,8 +49,8 @@ class LayerButtonsWidget(QWidget):
         # Add Segment Button
         self.add_segment_btn = QPushButton("")
         self.add_segment_btn.setIcon(QIcon(PLUS_ICON))
-        self.add_segment_btn.setIconSize(QSize(36, 36))
-        self.add_segment_btn.setFixedSize(48, 48)
+        self.add_segment_btn.setIconSize(QSize(50, 50))
+        self.add_segment_btn.setFixedSize(50, 50)
         self.add_segment_btn.setToolTip(f"Add new segment to {layer_name}")
         self.add_segment_btn.clicked.connect(self._handle_add_segment)
         layout.addWidget(self.add_segment_btn)
@@ -53,8 +60,8 @@ class LayerButtonsWidget(QWidget):
         self.lock_btn.setCheckable(True)
         self.lock_btn.setChecked(is_locked)
         self.lock_btn.setIcon(QIcon(LOCK_ICON if is_locked else UNLOCK_ICON))
-        self.lock_btn.setIconSize(QSize(36, 36))
-        self.lock_btn.setFixedSize(48, 48)
+        self.lock_btn.setIconSize(QSize(50, 50))
+        self.lock_btn.setFixedSize(50, 50)
         self.lock_btn.setToolTip(f"Lock/unlock {layer_name}")
         self.lock_btn.clicked.connect(self._handle_lock_toggle)
         layout.addWidget(self.lock_btn)
@@ -74,6 +81,7 @@ class LayerButtonsWidget(QWidget):
         self.lock_btn.setIcon(QIcon(LOCK_ICON if locked else UNLOCK_ICON))
         if self.on_lock_toggle:
             self.on_lock_toggle(locked)
+
 
 
 if __name__ == "__main__":

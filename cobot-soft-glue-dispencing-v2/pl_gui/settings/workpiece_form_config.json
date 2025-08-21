@@ -1,7 +1,7 @@
 {
   "workpieceId": {
     "visible": true,
-    "mandatory": false
+    "mandatory": true
   },
   "name": {
     "visible": true,

@@ -1,25 +1,21 @@
-Workpiece orientation: -16.034889369889406
-Workpiece points: [[[672. 217.]]
+Workpiece orientation: 26.748339013550215
+Workpiece points: [[[615. 390.]]
 
- [[665. 217.]]
+ [[590. 437.]]
 
- [[545. 252.]]
+ [[708. 497.]]
 
- [[560. 303.]]
+ [[733. 450.]]
 
- [[685. 267.]]
+ [[615. 390.]]]
+Contour orientation: 20.354605636503127
+Contour points: [[[661. 316.]]
 
- [[686. 263.]]
+ [[642. 365.]]
 
- [[672. 217.]]]
-Contour orientation: -71.15025760936749
-Contour points: [[[784. 352.]]
+ [[759. 409.]]
 
- [[779. 361.]]
+ [[766. 409.]]
 
- [[741. 476.]]
-
- [[792. 493.]]
-
- [[835. 370.]]]
-Calculated rotation difference: -55.11536823947807
+ [[783. 361.]]]
+Calculated rotation difference: -6.393733377047084

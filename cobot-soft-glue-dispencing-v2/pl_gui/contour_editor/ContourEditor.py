@@ -177,9 +177,9 @@ class ContourEditor(QFrame):
         # gesture = event.gesture(Qt.GestureType.PinchGesture)
         gesture = event.gesture(Qt.GestureType.PinchGesture)
         if gesture:
-            if gesture.state() == Qt.GestureState.GestureStarted:
+            if gesture.robotState() == Qt.GestureState.GestureStarted:
                 self._initial_scale = self.scale_factor  # Optional: save original scale
-            elif gesture.state() == Qt.GestureState.GestureUpdated:
+            elif gesture.robotState() == Qt.GestureState.GestureUpdated:
                 pinch = gesture
                 scale_factor = pinch.scaleFactor()
                 center = pinch.centerPoint()  # Midpoint of the fingers
@@ -196,7 +196,7 @@ class ContourEditor(QFrame):
                 self.translation = center - image_point_under_fingers * self.scale_factor
 
                 self.update()
-            elif gesture.state() == Qt.GestureState.GestureFinished:
+            elif gesture.robotState() == Qt.GestureState.GestureFinished:
                 # Optional: snap or log final zoom level
                 pass
 
@@ -674,10 +674,11 @@ class MainApplicationFrame(QFrame):
         # Create the right panel widgets
         self.pointManagerWidget = PointManagerWidget(self.contourEditor)
         self.topbar.point_manager = self.pointManagerWidget
-        self.pointManagerWidget.setFixedWidth(500)
+        self.pointManagerWidget.setFixedWidth(600)
 
         self.createWorkpieceForm = CreateWorkpieceForm(parent=self)
-        self.createWorkpieceForm.setFixedWidth(500)
+        # self.createWorkpieceForm.apply_stylesheet()
+        self.createWorkpieceForm.setFixedWidth(350)
         self.createWorkpieceForm.hide()  # Initially hidden
 
         # Add point manager to layout (initially visible)

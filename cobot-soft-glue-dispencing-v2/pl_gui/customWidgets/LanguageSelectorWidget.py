@@ -9,6 +9,7 @@ class LanguageSelectorWidget(QComboBox):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+
         broker = MessageBroker()
         broker.subscribe("Language",self.updateSelectedLang)
         self.loader = LanguageResourceLoader()  # Singleton
@@ -34,3 +35,18 @@ class LanguageSelectorWidget(QComboBox):
     def updateSelectedLang(self,message=None):
         current_lang = self.loader.language
         self.setCurrentIndex(self.findText(current_lang.display_name))
+
+if __name__ == "__main__":
+    from PyQt6.QtWidgets import QApplication
+    import sys
+
+    app = QApplication(sys.argv)
+    widget = LanguageSelectorWidget()
+    widget.show()
+
+    def on_language_change(lang):
+        print(f"Language changed to: {lang.display_name}")
+
+    widget.languageChanged.connect(on_language_change)
+
+    sys.exit(app.exec())

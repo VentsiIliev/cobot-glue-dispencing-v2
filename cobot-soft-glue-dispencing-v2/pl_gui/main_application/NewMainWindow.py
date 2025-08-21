@@ -1,6 +1,7 @@
 import os
 import sys
 
+from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QGridLayout, QSizePolicy,
                              QStackedWidget, QFrame)
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -80,13 +81,20 @@ class ApplicationDemo(QWidget):
 
     def on_app_selected(self, app_name):
         """Handle when an app is selected from any folder"""
+        print(f"Currently running app: {self.current_running_app}")
         print(f"Demo: App selected - {app_name}")
 
+
+
+        if self.current_running_app == app_name:
+            print(f"Demo: App '{app_name}' is already running, no need to show again.")
+            return
         # Find which folder emitted this signal
         sender_folder = self.sender()
-
         # Store the running app info
         self.current_running_app = app_name
+
+
         self.current_app_folder = sender_folder
 
         # Show the appropriate app
@@ -152,6 +160,8 @@ class ApplicationDemo(QWidget):
         if self.stacked_widget.count() > 1:
             # Remove existing app widget
             old_app = self.stacked_widget.widget(1)
+            old_app.clean_up()  # Call cleanup if needed
+            print(f"Demo: Closing old app widget - {old_app}")
             self.stacked_widget.removeWidget(old_app)
             old_app.deleteLater()
 
@@ -168,6 +178,12 @@ class ApplicationDemo(QWidget):
         if self.current_running_app:
             print(f"Demo: Closing app - {self.current_running_app}")
 
+            # check if current app is dashboard
+            if self.current_running_app == "Start":
+                print("Demo: Closing Dashboard App Widget and cleaning up")
+                self.stacked_widget.widget(1).clean_up()
+            else:
+                print(f"Demo2: Closing App Widget - {self.current_running_app}")
             # Switch back to the folder view (index 0)
             self.stacked_widget.setCurrentIndex(0)
 
@@ -228,6 +244,8 @@ class ApplicationDemo(QWidget):
         machine_toolbar_layout = QVBoxLayout(machine_toolbar_frame)
         machine_toolbar_layout.setContentsMargins(5, 5, 5, 5)
         machine_toolbar_layout.addWidget(self.header)
+
+
         main_layout.addWidget(machine_toolbar_frame)
         # self.header = Header(
         #     screen_width=self.width(),

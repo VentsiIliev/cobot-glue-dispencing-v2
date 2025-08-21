@@ -13,8 +13,10 @@ from src.plvision.PLVision.arucoModule import *
 from API.shared.settings.conreateSettings.CameraSettings import CameraSettings
 from API.shared.settings.conreateSettings.enums.CameraSettingKey import CameraSettingKey
 import logging
+from GlueDispensingApplication.SystemStatePublisherThread import SystemStatePublisherThread
 import platform
 import cv2
+import enum
 
 # Paths to camera calibration data
 CAMERA_DATA_PATH = os.path.join(os.path.dirname(__file__), 'calibration', 'cameraCalibration', 'storage',
@@ -30,12 +32,27 @@ WORK_AREA_POINTS_PATH = os.path.join(os.path.dirname(__file__), 'calibration', '
 
 CONFIG_FILE_PATH = os.path.join(os.path.dirname(__file__), 'config.json')
 
+class VisionSystemState(Enum):
+    INITIALIZING = "initializing"
+    IDLE = "idle"
+    CALIBRATING = "calibrating"
+    RUNNING = "running"
+    ERROR = "error"
+
 
 class VisionSystem:
     def __init__(self, configFilePath=None, camera_settings=None):
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.calibrationImages = []
+        self.state=VisionSystemState.INITIALIZING
+        self.stateTopic = "vision-system/state"
+
         self.broker = MessageBroker()
+        self.system_state_publisher = SystemStatePublisherThread(publish_state_func=self.publishState, interval=0.1)
+        self.system_state_publisher.start()
+
+        self.calibrationImages = []
+
+
         self.calibrationImageCapturedTopic = "vision-system/calibration_image_captured"
         # Initialize camera settings
         if camera_settings is not None:
@@ -140,6 +157,7 @@ class VisionSystem:
         if self.image is None:
             return None, None, None
 
+        self.state = VisionSystemState.RUNNING
         self.rawImage = self.image.copy()
 
         # Handle brightness adjustment if enabled
@@ -571,6 +589,9 @@ class VisionSystem:
             data = json.load(f)
         return data
 
+    def publishState(self):
+        # print("Publishing state:", self.state)
+        self.broker.publish(self.stateTopic, self.state)
 
 if __name__ == "__main__":
     vision_system = VisionSystem()

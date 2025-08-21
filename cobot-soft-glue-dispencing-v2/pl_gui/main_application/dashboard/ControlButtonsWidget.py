@@ -1,7 +1,8 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFrame, QSizePolicy
 from PyQt6.QtCore import Qt, pyqtSignal
 from pl_gui.main_application.dashboard.MachineIndicatorsWidget import MaterialButton
-
+from API.MessageBroker import MessageBroker
+from GlueDispensingApplication.GlueSprayApplicationState import GlueSprayApplicationState
 
 class ControlButtonsWidget(QWidget):
     # Define custom signals
@@ -13,6 +14,8 @@ class ControlButtonsWidget(QWidget):
         super().__init__(parent)
         self.init_ui()
         self.connect_signals()
+        self.broker = MessageBroker()
+        self.broker.subscribe("system/state", self.on_system_status_update)
 
     def init_ui(self):
         # Main layout for the widget
@@ -85,3 +88,21 @@ class ControlButtonsWidget(QWidget):
     def enable_pause_button(self, enabled=True):
         """Enable or disable the pause button"""
         self.pause_btn.setEnabled(enabled)
+
+    def on_system_status_update(self, state):
+        if state == GlueSprayApplicationState.IDLE:
+            self.start_btn.setEnabled(True)
+        elif state == GlueSprayApplicationState.STARTED:
+            self.start_btn.setEnabled(False)
+            self.stop_btn.setEnabled(True)
+            self.pause_btn.setEnabled(True)
+        elif state == GlueSprayApplicationState.INITIALIZING:
+            self.start_btn.setEnabled(False)
+            self.stop_btn.setEnabled(False)
+            self.pause_btn.setEnabled(False)
+
+    def clean_up(self):
+        """Cleanup subscriptions and resources"""
+        print("Cleaning up ControlButtonsWidget")
+        self.broker.unsubscribe("system/state", self.on_system_status_update)
+        self.broker = None

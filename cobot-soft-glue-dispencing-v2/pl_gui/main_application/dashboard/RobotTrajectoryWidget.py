@@ -207,6 +207,8 @@ class SmoothTrajectoryWidget(QWidget):
             }
         """)
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.image_label.setScaledContents(False)
+        self.image_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
         # Container layout
         container_layout = QVBoxLayout()
@@ -279,7 +281,8 @@ class SmoothTrajectoryWidget(QWidget):
             return
 
         x, y = message.get("x", 0), message.get("y", 0)
-        # print(f"Received trajectory point: ({x}, {y})")
+        print(f"📍 Widget received: ({x}, {y}) - Widget size: {self.image_width}x{self.image_height}")
+        print(self.get_image_dimensions())
         screen_x = int(x)
         screen_y = int(y)
 
@@ -461,6 +464,7 @@ class SmoothTrajectoryWidget(QWidget):
         self.image_label.setPixmap(pixmap)
 
     def set_image(self, message=None):
+        print("Updating image from external source")
         """Receive an external image from outside."""
         if message is None or "image" not in message:
             return
@@ -543,7 +547,7 @@ class TestWindow(QWidget):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(4)
 
-        self.camera_widget = SmoothTrajectoryWidget(image_width=1280, image_height=720)
+        self.camera_widget = SmoothTrajectoryWidget(image_width=640, image_height=360)
         self.camera_widget.set_image(np.zeros((1280, 720, 3), dtype=np.uint8))
         self.camera_widget.estimated_time_value = 5.0
         self.camera_widget.time_left_value = 3.0
@@ -565,6 +569,7 @@ class TestWindow(QWidget):
                 x = 80 * math.cos(t * 2)
                 y = 80 * math.sin(t * 2)
                 broker.publish("robot/trajectory/point", {"x": x, "y": y})
+
                 t += dt
                 time.sleep(dt)
 
