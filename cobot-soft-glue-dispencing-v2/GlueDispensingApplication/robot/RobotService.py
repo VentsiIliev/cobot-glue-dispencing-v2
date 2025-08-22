@@ -173,7 +173,7 @@ class RobotService:
         self.state= RobotServiceState.INITIALIZING
         self.broker = MessageBroker()
         self.statePublisherThread = SystemStatePublisherThread(self.publishState, 0.1)
-        self.statePublisherThread.start()
+        # self.statePublisherThread.start()
 
         self.robot = robot
         self.robot.printSdkVersion()

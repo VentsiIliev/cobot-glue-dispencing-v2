@@ -5,11 +5,11 @@ from PyQt6.QtWidgets import QApplication
 #
 from pl_gui.main_application.login.LoginWindow import LoginWindow
 
-from pl_gui.main_application.NewMainWindow import ApplicationDemo
+from pl_gui.main_application.NewMainWindow import ApplicationMainWindow
 
 CONFIG_FILE = "pl_gui/pl_gui_config.json"
 
-SHOW_FULLSCREEN = False
+SHOW_FULLSCREEN = True
 WINDOW_TITLE = "PL Project"
 # SETTINGS_STYLESHEET = os.path.join("pl_gui","styles.qss")
 class PlGui:
@@ -22,7 +22,7 @@ class PlGui:
         app = QApplication(sys.argv)
         app.setStyle('Fusion')
 
-        gui = ApplicationDemo(self.controller)
+        gui = ApplicationMainWindow(self.controller)
 
         if SHOW_FULLSCREEN:
             gui.showFullScreen()

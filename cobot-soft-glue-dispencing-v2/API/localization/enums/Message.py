@@ -25,6 +25,12 @@ class Message(Enum):
     LOGIN_TIME = "LOGIN TIME"
     SESSION_DURATION = "SESSION DURATION"
 
+    # Main Window
+    WORK = "Work"
+    SERVICE = "Service"
+    ADMINISTRATION = "Administration"
+    STATISTICS = "Statistics"
+
     # User Management
     UNKNOWN = "Unknown"
     ADD_USER = "Add User"

@@ -5,6 +5,7 @@ from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QGridLayout, QSizePolicy,
                              QStackedWidget, QFrame)
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import QTimer
 
 from API.shared.settings.conreateSettings.CameraSettings import CameraSettings
 from API.shared.settings.conreateSettings.RobotSettings import RobotSettings
@@ -26,6 +27,7 @@ from pl_gui.main_application.appWidgets.CreateWorkpieceOptionsAppWidget import C
 from pl_gui.main_application.header.Header import Header
 from pl_gui.Header import Header
 from pl_gui.main_application.controller.CreateWorkpieceManager import CreateWorkpieceManager
+from API.localization.LanguageResourceLoader import LanguageResourceLoader
 
 # Resource paths
 RESOURCES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources")
@@ -46,7 +48,7 @@ CALIBRATION_ICON = os.path.join(RESOURCES_DIR, "service/CALIBRATION_BUTTON_SQUAR
 USER_MANAGEMENT_ICON = os.path.join(RESOURCES_DIR, "administration/user_management.png")
 
 
-class ApplicationDemo(QWidget):
+class ApplicationMainWindow(QWidget):
     """Demo application showing the Android folder widget with QStackedWidget for app management"""
     start_requested = pyqtSignal()
     stop_requested = pyqtSignal()
@@ -60,7 +62,9 @@ class ApplicationDemo(QWidget):
         self.current_app_folder = None  # Track which folder has the running app
         self.stacked_widget = None  # The main stacked widget
         self.folder_page = None  # The main folder page widget
+        self.lang_loader = LanguageResourceLoader()
         self.setup_ui()
+
 
     def on_folder_opened(self, opened_folder):
         """Handle when a folder is opened - gray out other folders"""
@@ -70,7 +74,7 @@ class ApplicationDemo(QWidget):
 
     def on_folder_closed(self):
         """Handle when a folder is closed - restore all folders"""
-        print("Demo: Folder closed - restoring all folders")
+        print("ApplicationMainWindow: Folder closed - restoring all folders")
         # Reset the current app state
         self.current_running_app = None
         self.current_app_folder = None
@@ -82,25 +86,19 @@ class ApplicationDemo(QWidget):
     def on_app_selected(self, app_name):
         """Handle when an app is selected from any folder"""
         print(f"Currently running app: {self.current_running_app}")
-        print(f"Demo: App selected - {app_name}")
+        print(f"ApplicationMainWindow: App selected - {app_name}")
 
         sender_folder = self.sender()
-
-        # if self.current_running_app == app_name:
-        #     return
         # Find which folder emitted this signal
         # Store the running app info
         self.current_running_app = app_name
-
-
         self.current_app_folder = sender_folder
-
         # Show the appropriate app
         self.show_app(app_name)
 
     def on_back_button_pressed(self):
         """Handle when the back button is pressed in the sidebar"""
-        print("Demo: Back button signal received - closing app and returning to main")
+        print("ApplicationMainWindow: Back button signal received - closing app and returning to main")
         self.close_current_app()
 
     def show_app(self, app_name):
@@ -129,7 +127,7 @@ class ApplicationDemo(QWidget):
         elif app_name == "Gallery":
             app_widget = GalleryAppWidget(controller=self.controller)
         elif app_name == "Calibration":
-            print("Demo: Showing Service Calibration App Widget")
+            print("ApplicationMainWindow: Showing Service Calibration App Widget")
             from pl_gui.main_application.appWidgets.CalibrationAppWidget import ServiceCalibrationAppWidget
             app_widget = ServiceCalibrationAppWidget(parent=self,controller=self.controller)
         elif app_name == "DXF Browser":
@@ -137,7 +135,6 @@ class ApplicationDemo(QWidget):
             from pl_gui.settings.Paths import DXF_DIRECTORY
             loader = DXFThumbnailLoader(DXF_DIRECTORY)
             thumbnails = loader.run()
-
             app_widget = GalleryAppWidget(controller=self.controller, onApplyCallback=self.onDxfBrowserSubmit,
                                           thumbnails=thumbnails)
         else:
@@ -159,29 +156,27 @@ class ApplicationDemo(QWidget):
             # Remove existing app widget
             old_app = self.stacked_widget.widget(1)
             old_app.clean_up()  # Call cleanup if needed
-            print(f"Demo: Closing old app widget - {old_app}")
+            print(f"ApplicationMainWindow: Closing old app widget - {old_app}")
             self.stacked_widget.removeWidget(old_app)
             old_app.deleteLater()
 
         self.stacked_widget.addWidget(app_widget)
-
         # Switch to the app view (index 1)
         self.stacked_widget.setCurrentIndex(1)
-
         print(f"App '{app_name}' is now running. Press ESC to close or click the back button.")
         return app_widget
 
     def close_current_app(self):
         """Close the currently running app and restore the folder interface"""
         if self.current_running_app:
-            print(f"Demo: Closing app - {self.current_running_app}")
+            print(f"ApplicationMainWindow: Closing app - {self.current_running_app}")
 
             # check if current app is dashboard
             if self.current_running_app == "Start":
-                print("Demo: Closing Dashboard App Widget and cleaning up")
+                print("ApplicationMainWindow: Closing Dashboard App Widget and cleaning up")
                 self.stacked_widget.widget(1).clean_up()
             else:
-                print(f"Demo2: Closing App Widget - {self.current_running_app}")
+                print(f"ApplicationMainWindow: Closing App Widget - {self.current_running_app}")
             # Switch back to the folder view (index 0)
             self.stacked_widget.setCurrentIndex(0)
 
@@ -203,16 +198,12 @@ class ApplicationDemo(QWidget):
             for folder in self.folders:
                 folder.set_grayed_out(False)
 
-
     def setup_ui(self):
         self.setWindowTitle("Android-Style App Folder Demo with QStackedWidget")
-
         # Set reasonable window size instead of maximized
         self.resize(1200, 800)  # Reasonable default size
-
         # Center the window on screen
         self.center_on_screen()
-
         self.setStyleSheet("""
             QWidget {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
@@ -243,17 +234,7 @@ class ApplicationDemo(QWidget):
         machine_toolbar_layout.setContentsMargins(5, 5, 5, 5)
         machine_toolbar_layout.addWidget(self.header)
 
-
         main_layout.addWidget(machine_toolbar_frame)
-        # self.header = Header(
-        #     screen_width=self.width(),
-        #     screen_height=self.height(),
-        #     toggle_menu_callback=None,
-        #     dashboard_button_callback=None
-        # )
-        # self.header.menu_button.hide()
-        # self.header.dashboardButton.hide()
-        # main_layout.addWidget(self.header)
 
         # Create the stacked widget
         self.stacked_widget = QStackedWidget()
@@ -283,28 +264,28 @@ class ApplicationDemo(QWidget):
         # Create 6 folders in a 3x2 grid
         workFolder = Folder("Work")
         workButtons = [
-            ("Start", DASHBOARD_ICON, self.onStartPressed),
-            ("Create Workpiece Options", CREATE_WORKPIECE_ICON, self.onCreateWorkpiecePressed),
-            ("Gallery", GALLERY_ICON, self.onGalleryPressed),
+            ("Start", DASHBOARD_ICON),
+            ("Create Workpiece Options", CREATE_WORKPIECE_ICON),
+            ("Gallery", GALLERY_ICON),
         ]
-        for button, icon_path, callback in workButtons:
-            workFolder.add_app(button, icon_path, callback)
+        for button, icon_path in workButtons:
+            workFolder.add_app(button, icon_path)
 
         serviceFolder = Folder("Service")
         serviceButtons = [
-            ("Settings", SETTINGS_ICON, self.onSettingsPressed),
-            ("Calibration", CALIBRATION_ICON, self.onCalibrationPressed),
-            ("Service Tools", SETTINGS_ICON, self.onServicePressed),
+            ("Settings", SETTINGS_ICON),
+            ("Calibration", CALIBRATION_ICON),
+            ("Service Tools", SETTINGS_ICON),
         ]
-        for button, icon, callback in serviceButtons:
-            serviceFolder.add_app(button, icon, callback)
+        for button, icon in serviceButtons:
+            serviceFolder.add_app(button, icon)
 
         administrationFolder = Folder("Administration")
         administrationButtons = [
-            ("User Management", USER_MANAGEMENT_ICON, self.onUserManagementPressed)
+            ("User Management", USER_MANAGEMENT_ICON)
         ]
-        for button, icon, callback in administrationButtons:
-            administrationFolder.add_app(button, icon, callback)
+        for button, icon in administrationButtons:
+            administrationFolder.add_app(button, icon)
 
         statistics = Folder("Statistics")
         apps4 = [
@@ -390,36 +371,6 @@ class ApplicationDemo(QWidget):
 
         return self.size() if hasattr(self, '_initialized') else self.size()
 
-    # App callback methods
-    def onStartPressed(self):
-        """Handle start button press"""
-        print("Start button pressed - launching start app")
-
-    def onCreateWorkpiecePressed(self):
-        """Handle create workpiece button press"""
-        print("Create Workpiece button pressed - launching workpiece creator")
-
-    def onGalleryPressed(self):
-        """Handle gallery button press"""
-        print("Gallery button pressed - launching gallery app")
-
-    def onSettingsPressed(self):
-        """Handle settings button press"""
-        print("Settings button pressed - launching settings app")
-
-    def onCalibrationPressed(self):
-        """Handle calibration button press"""
-        print("Calibration button pressed - launching calibration app")
-
-    def onServicePressed(self):
-        """Handle service button press"""
-        print("Service button pressed - launching service tools")
-
-    def onUserManagementPressed(self):
-        """Handle user management button press"""
-        print("User Management button pressed - launching user management app")
-        # The app selection signal will handle showing the app
-
     def keyPressEvent(self, event):
         """Handle key press events"""
         # ESC key to close current app (for demo purposes)
@@ -497,7 +448,6 @@ class ApplicationDemo(QWidget):
         self.contour_editor.init_contours(contours_by_layer)
 
         # Set up the callback with proper error checking
-        from PyQt6.QtCore import QTimer
         def set_callback():
             self.contour_editor.set_create_workpiece_for_on_submit_callback(self.onCreateWorkpieceSubmitDxf)
             print("DXF callback set successfully")
@@ -611,15 +561,8 @@ def main():
 
     # Create and show demo
     controller = MockController()
-    demo = ApplicationDemo(controller)
+    demo = ApplicationMainWindow(controller)
     demo.show()
-
-    print("Demo Instructions:")
-    print("1. Click on any folder to open it")
-    print("2. Click on any app icon to select it and see it open in full screen")
-    print("3. Click the back button (←) in the sidebar to return to the main view")
-    print("4. Press ESC to manually close the current app")
-    print("5. Apps now open in a full-screen view using QStackedWidget")
 
     sys.exit(app.exec())
 

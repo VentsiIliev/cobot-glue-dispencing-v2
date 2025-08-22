@@ -62,7 +62,7 @@ class GlueSprayingApplication:
         self.state = GlueSprayApplicationState.INITIALIZING
 
         self.system_state_publisher = SystemStatePublisherThread(publish_state_func=self.publishState,interval=0.1)
-        self.system_state_publisher.start()
+        # self.system_state_publisher.start()
 
         self.settingsManager = settingsManager
         self.visionService = visionService

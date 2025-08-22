@@ -79,6 +79,7 @@ class ExpandableLayerWidget(QWidget):
         self.expand_btn.setFixedSize(80, 80)
         self.expand_btn.setStyleSheet("""
             QPushButton {
+                background-color: transparent;
                 border: none;
                 font-weight: bold;
                 qproperty-iconSize: 50px 50px;
@@ -86,6 +87,7 @@ class ExpandableLayerWidget(QWidget):
         """)
         self.expand_btn.setContentsMargins(0, 0, 0, 0)
         self.expand_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.expand_btn.clicked.connect(self._toggle_expansion)
         layout.addWidget(self.expand_btn, alignment=Qt.AlignmentFlag.AlignVCenter)
 
         # Layer buttons widget

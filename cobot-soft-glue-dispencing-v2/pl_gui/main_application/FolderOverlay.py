@@ -43,8 +43,6 @@ class FolderOverlay(QWidget):
                 if expanded_view._current_app_name:
                     # App is running - minimize expanded view (collapse to floating icon)
                     expanded_view.close_from_outside()
-                    # Hide overlay so user can interact with the app
-                    self.hide()
                     event.accept()
                     return
 
