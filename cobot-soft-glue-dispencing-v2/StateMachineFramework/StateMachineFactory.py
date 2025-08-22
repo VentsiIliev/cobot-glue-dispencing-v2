@@ -3,10 +3,7 @@ from typing import Dict
 import json
 from typing_extensions import Any
 
-from StateMachineFramework.BaseContext import BaseContext
-from StateMachineFramework.BaseStateMachine import BaseStateMachine
-from StateMachineFramework.StateConfig import StateConfig
-from StateMachineFramework.StateMachineConfig import StateMachineConfig
+from StateMachineFramework.v2 import StateMachineConfig, BaseContext, StateConfig, BaseStateMachine
 
 
 class StateMachineFactory:

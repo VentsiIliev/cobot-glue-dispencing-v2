@@ -12,8 +12,7 @@ import time
 import json
 from typing import Dict, Any, Optional
 
-from StateMachineFramework.BaseStateMachine import BaseStateMachine
-from StateMachineFramework.BaseContext import BaseContext
+
 from StateMachineFramework.StateMachineFactory import StateMachineFactory
 from StateMachineFramework.StateMachineBuilder import StateMachineBuilder
 
@@ -22,6 +21,8 @@ from GlueSprayApplicationStateMachineAdapter.GlueSprayApplicationAdapter import 
 from GlueSprayApplicationStateMachineAdapter.GlueSprayApplicationAdapter import create_enhanced_glue_spray_application
 from GlueSprayApplicationStateMachineAdapter.GlueSprayApplicationAdapter import create_glue_spray_from_config
 from GlueSprayApplicationStateMachineAdapter.GlueSprayApplicationAdapter import GLUE_SPRAY_CONFIG
+from StateMachineFramework.v2 import BaseContext, BaseStateMachine
+
 
 # ============================================================================
 # MULTIPLE APPLICATION DEMONSTRATION

@@ -1,13 +1,7 @@
 from typing import Dict, Optional
 
-from StateMachineFramework.BaseContext import BaseContext
-from StateMachineFramework.BaseStateMachine import BaseStateMachine
+from StateMachineFramework.v2 import StateConfig, StateMachineFactory, StateMachineConfig, BaseContext, BaseStateMachine
 
-from StateMachineFramework.StateConfig import StateConfig
-from StateMachineFramework.StateMachineConfig import StateMachineConfig
-from StateMachineFramework.StateMachineFactory import StateMachineFactory
-
-from StateMachineFramework.StateConfig import StateConfig
 
 class StateMachineBuilder:
     """

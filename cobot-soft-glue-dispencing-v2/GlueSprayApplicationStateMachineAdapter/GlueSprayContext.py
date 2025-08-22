@@ -1,6 +1,6 @@
 from typing import Dict, Any
 
-from StateMachineFramework.BaseContext import BaseContext
+from StateMachineFramework.v2 import BaseContext
 
 
 class GlueSprayContext(BaseContext):

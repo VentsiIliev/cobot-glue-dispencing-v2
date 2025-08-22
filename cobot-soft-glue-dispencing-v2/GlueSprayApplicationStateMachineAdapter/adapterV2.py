@@ -1,13 +1,157 @@
-from typing import Dict, Any
-from typing import Dict, Any
+from GlueSprayApplicationStateMachineAdapter.errorSystem.glueSprayErrorCodes.errorCodes import HardwareErrorCode, SafetyErrorCode
+from GlueSprayApplicationStateMachineAdapter.recoveryStrategies.RetryRecoveryStrategy import RetryRecoveryStrategy
+from GlueSprayApplicationStateMachineAdapter.recoveryStrategies.SafePositionRecoveryStrategy import \
+    SafePositionRecoveryStrategy
+from StateMachineFramework.errorCodesSystem.contextAndTracking.ErrorTracker import ErrorTracker
+from StateMachineFramework.errorCodesSystem.errorCodes.errorCodes import OperationErrorCode, \
+    ValidationErrorCode
+from StateMachineFramework.errorCodesSystem.recoveryStrategies.ErrorRecoveryManager import ErrorRecoveryManager
 
-from GlueSprayApplicationStateMachineAdapter.GlueSprayContext import GlueSprayContext
-from GlueSprayApplicationStateMachineAdapter.GlueSprayEvent import GlueSprayEvent
-from GlueSprayApplicationStateMachineAdapter.GlueSprayState import GlueSprayState
 
-from StateMachineFramework.StateMachineFactory import StateMachineFactory
-from StateMachineFramework.StateMachineBuilder import StateMachineBuilder
-from StateMachineFramework.v2 import BaseStateMachine
+from StateMachineFramework.v2 import *
+
+
+
+from StateMachineFramework.errorCodesSystem.InformationRegistry.ErrorRegistry import ERROR_REGISTRY
+
+
+# ============================================================================
+# APPLICATION-SPECIFIC ENUMS AND EVENTS
+# ============================================================================
+
+class GlueSprayState(Enum):
+    INITIALIZING = "INITIALIZING"
+    IDLE = "IDLE"
+    STARTED = "STARTED"
+    CALIBRATING_ROBOT = "CALIBRATING_ROBOT"
+    CALIBRATING_CAMERA = "CALIBRATING_CAMERA"
+    MEASURING_HEIGHT = "MEASURING_HEIGHT"
+    CREATING_WORKPIECE = "CREATING_WORKPIECE"
+    UPDATING_TOOL_CHANGER = "UPDATING_TOOL_CHANGER"
+    EXECUTING_TRAJECTORY = "EXECUTING_TRAJECTORY"
+    HANDLING_BELT = "HANDLING_BELT"
+    TEST_RUNNING = "TEST_RUNNING"
+    ERROR = "ERROR"
+    PAUSED = "PAUSED"
+
+
+class GlueSprayEvent(Enum):
+    # System Events
+    SYSTEM_READY = "SYSTEM_READY"
+    ROBOT_READY = "ROBOT_READY"
+    VISION_READY = "VISION_READY"
+    ERROR_OCCURRED = "ERROR_OCCURRED"
+    RESET_REQUESTED = "RESET_REQUESTED"
+
+    # Operation Events
+    START_REQUESTED = "START_REQUESTED"
+    CALIBRATE_ROBOT_REQUESTED = "CALIBRATE_ROBOT_REQUESTED"
+    CALIBRATE_CAMERA_REQUESTED = "CALIBRATE_CAMERA_REQUESTED"
+    MEASURE_HEIGHT_REQUESTED = "MEASURE_HEIGHT_REQUESTED"
+    CREATE_WORKPIECE_REQUESTED = "CREATE_WORKPIECE_REQUESTED"
+    UPDATE_TOOL_CHANGER_REQUESTED = "UPDATE_TOOL_CHANGER_REQUESTED"
+    EXECUTE_TRAJECTORY_REQUESTED = "EXECUTE_TRAJECTORY_REQUESTED"
+    HANDLE_BELT_REQUESTED = "HANDLE_BELT_REQUESTED"
+    TEST_RUN_REQUESTED = "TEST_RUN_REQUESTED"
+
+    # Completion Events
+    OPERATION_COMPLETED = "OPERATION_COMPLETED"
+    OPERATION_FAILED = "OPERATION_FAILED"
+    PAUSE_REQUESTED = "PAUSE_REQUESTED"
+    RESUME_REQUESTED = "RESUME_REQUESTED"
+
+
+# ============================================================================
+# APPLICATION CONTEXT
+# ============================================================================
+
+class GlueSprayContext(BaseContext):
+    """Extended context for glue spray application"""
+
+    def __init__(self, original_application):
+        super().__init__()
+        self.original_app = original_application
+        self.current_operation = None
+        self.operation_params = {}
+        self.safety_checks_enabled = True
+
+        # Initialize error management
+        self.error_recovery_manager = ErrorRecoveryManager()
+        self.error_tracker = ErrorTracker()
+        self._setup_error_recovery()
+
+    def _setup_error_recovery(self):
+        """Setup error recovery strategies"""
+
+        # Retry strategy for communication and temporary hardware issues
+        retry_strategy = RetryRecoveryStrategy([
+            HardwareErrorCode.CAMERA_CONNECTION_FAILED,
+            HardwareErrorCode.IMAGE_CAPTURE_FAILED,
+            HardwareErrorCode.ROBOT_MOVEMENT_FAILED,
+            OperationErrorCode.OPERATION_TIMEOUT
+        ], max_retries=3, delay=2.0)
+
+        # Safe position strategy for critical hardware issues
+        safe_position_strategy = SafePositionRecoveryStrategy([
+            HardwareErrorCode.ROBOT_COLLISION_DETECTED,
+            HardwareErrorCode.ROBOT_EMERGENCY_STOP,
+            SafetyErrorCode.SAFETY_FENCE_OPEN,
+            SafetyErrorCode.EMERGENCY_STOP_ACTIVATED,
+            SafetyErrorCode.DANGEROUS_POSITION_DETECTED
+        ])
+
+        self.error_recovery_manager.add_strategy(retry_strategy)
+        self.error_recovery_manager.add_strategy(safe_position_strategy)
+
+    def get_robot_status(self) -> Dict[str, Any]:
+        """Get current robot status with error handling"""
+        try:
+            if not hasattr(self.original_app, 'robotService') or not self.original_app.robotService:
+                self._record_error(HardwareErrorCode.ROBOT_CONNECTION_FAILED,
+                                   "Robot service not available")
+                return {'connected': False, 'error': 'Robot service not available'}
+
+            return {
+                'connected': True,
+                'position': 'unknown',  # Could get actual position
+                'status': 'ready'
+            }
+        except Exception as e:
+            self._record_error(HardwareErrorCode.ROBOT_CONNECTION_FAILED, str(e))
+            return {'connected': False, 'error': str(e)}
+
+    def is_safe_to_operate(self) -> bool:
+        """Check if it's safe to perform operations with detailed error reporting"""
+        if not self.safety_checks_enabled:
+            return True
+
+        try:
+            robot_status = self.get_robot_status()
+            if not robot_status.get('connected', False):
+                self._record_error(ValidationErrorCode.PRECONDITION_FAILED,
+                                   "Robot not connected")
+                return False
+
+            # Additional safety checks could be added here
+            # e.g., safety fence status, emergency stop status, etc.
+
+            return True
+
+        except Exception as e:
+            self._record_error(ValidationErrorCode.SAFETY_CHECK_FAILED, str(e))
+            return False
+
+    def _record_error(self, error_code: int, message: str, operation: str = None):
+        """Record an error with proper context"""
+        self.error_tracker.record_error(
+            code=error_code,
+            state=getattr(self, 'current_state', 'unknown'),
+            operation=operation or self.current_operation,
+            additional_data={'message': message}
+        )
+
+        # Set error message for compatibility
+        self.error_message = f"[{error_code}] {message}"
 
 
 # ============================================================================
@@ -183,111 +327,286 @@ class GlueSprayApplicationAdapter:
         self.context.register_callback('on_error', self._handle_application_error)
 
     def _execute_operation(self, params: Dict[str, Any]) -> Any:
-        """Execute the specified operation"""
+        """Execute the specified operation with comprehensive error handling"""
         operation_type = params.get('operation_type')
         context_data = params.get('context_data', {})
 
         print(f"Executing operation: {operation_type}")
+        self.context.current_operation = operation_type
 
         try:
             # Safety check before any operation
             if not self.context.is_safe_to_operate():
-                raise Exception("System not in safe state for operation")
+                raise StateMachineError(
+                    code=ValidationErrorCode.SAFETY_CHECK_FAILED,
+                    message="System not in safe state for operation",
+                    context={'operation': operation_type}
+                )
 
-            # Execute the appropriate operation
+            # Execute the appropriate operation with specific error handling
             if operation_type == "execute_trajectory":
-                contour_matching = context_data.get('contour_matching', True)
-                return self._safe_call('start', contour_matching)
-
+                return self._execute_trajectory(context_data)
             elif operation_type == "calibrate_robot":
-                return self._safe_call('calibrateRobot')
-
+                return self._execute_robot_calibration()
             elif operation_type == "calibrate_camera":
-                return self._safe_call('calibrateCamera')
-
+                return self._execute_camera_calibration()
             elif operation_type == "create_workpiece":
-                return self._safe_call('createWorkpiece')
-
+                return self._execute_workpiece_creation()
             elif operation_type == "measure_height":
-                return self._safe_call('measureHeight')
-
+                return self._execute_height_measurement()
             elif operation_type == "update_tool_changer":
-                return self._safe_call('updateToolChangerStation')
-
+                return self._execute_tool_changer_update()
             elif operation_type == "handle_belt":
-                return self._safe_call('handleBelt')
-
+                return self._execute_belt_handling()
             elif operation_type == "test_run":
-                return self._safe_call('testRun')
-
+                return self._execute_test_run()
             else:
-                raise ValueError(f"Unknown operation type: {operation_type}")
+                raise StateMachineError(
+                    code=OperationErrorCode.OPERATION_NOT_SUPPORTED,
+                    message=f"Unknown operation type: {operation_type}",
+                    context={'operation': operation_type}
+                )
 
-        except Exception as e:
-            print(f"Operation {operation_type} failed: {str(e)}")
+        except StateMachineError:
+            # Re-raise StateMachineError with proper error codes
             raise
+        except Exception as e:
+            # Convert generic exceptions to StateMachineError
+            self.context._record_error(OperationErrorCode.OPERATION_FAILED, str(e), operation_type)
+            raise StateMachineError(
+                code=OperationErrorCode.OPERATION_FAILED,
+                message=f"Operation {operation_type} failed: {str(e)}",
+                context={'operation': operation_type, 'original_error': str(e)}
+            )
+        finally:
+            self.context.current_operation = None
+
+    def _execute_trajectory(self, context_data: Dict[str, Any]) -> Any:
+        """Execute trajectory with specific error handling"""
+        try:
+            contour_matching = context_data.get('contour_matching', True)
+            return self._safe_call('start', contour_matching)
+        except Exception as e:
+            if "connection" in str(e).lower():
+                raise StateMachineError(HardwareErrorCode.ROBOT_CONNECTION_FAILED, str(e))
+            elif "collision" in str(e).lower():
+                raise StateMachineError(HardwareErrorCode.ROBOT_COLLISION_DETECTED, str(e))
+            elif "position" in str(e).lower():
+                raise StateMachineError(HardwareErrorCode.ROBOT_POSITION_INVALID, str(e))
+            else:
+                raise StateMachineError(OperationErrorCode.OPERATION_FAILED, str(e))
+
+    def _execute_robot_calibration(self) -> Any:
+        """Execute robot calibration with specific error handling"""
+        try:
+            return self._safe_call('calibrateRobot')
+        except Exception as e:
+            if "connection" in str(e).lower():
+                raise StateMachineError(HardwareErrorCode.ROBOT_CONNECTION_FAILED, str(e))
+            else:
+                raise StateMachineError(HardwareErrorCode.ROBOT_CALIBRATION_FAILED, str(e))
+
+    def _execute_camera_calibration(self) -> Any:
+        """Execute camera calibration with specific error handling"""
+        try:
+            return self._safe_call('calibrateCamera')
+        except Exception as e:
+            if "connection" in str(e).lower():
+                raise StateMachineError(HardwareErrorCode.CAMERA_CONNECTION_FAILED, str(e))
+            else:
+                raise StateMachineError(HardwareErrorCode.CAMERA_CALIBRATION_FAILED, str(e))
+
+    def _execute_workpiece_creation(self) -> Any:
+        """Execute workpiece creation with specific error handling"""
+        try:
+            return self._safe_call('createWorkpiece')
+        except Exception as e:
+            if "vision" in str(e).lower() or "image" in str(e).lower():
+                raise StateMachineError(HardwareErrorCode.IMAGE_PROCESSING_FAILED, str(e))
+            else:
+                raise StateMachineError(OperationErrorCode.OPERATION_FAILED, str(e))
+
+    def _execute_height_measurement(self) -> Any:
+        """Execute height measurement with specific error handling"""
+        try:
+            return self._safe_call('measureHeight')
+        except Exception as e:
+            if "camera" in str(e).lower():
+                raise StateMachineError(HardwareErrorCode.CAMERA_CONNECTION_FAILED, str(e))
+            elif "vision" in str(e).lower():
+                raise StateMachineError(HardwareErrorCode.VISION_ALGORITHM_FAILED, str(e))
+            else:
+                raise StateMachineError(OperationErrorCode.OPERATION_FAILED, str(e))
+
+    def _execute_tool_changer_update(self) -> Any:
+        """Execute tool changer update with specific error handling"""
+        try:
+            return self._safe_call('updateToolChangerStation')
+        except Exception as e:
+            if "robot" in str(e).lower():
+                raise StateMachineError(HardwareErrorCode.ROBOT_MOVEMENT_FAILED, str(e))
+            else:
+                raise StateMachineError(OperationErrorCode.OPERATION_FAILED, str(e))
+
+    def _execute_belt_handling(self) -> Any:
+        """Execute belt handling with specific error handling"""
+        try:
+            return self._safe_call('handleBelt')
+        except Exception as e:
+            if "movement" in str(e).lower():
+                raise StateMachineError(HardwareErrorCode.BELT_MOVEMENT_FAILED, str(e))
+            elif "sensor" in str(e).lower():
+                raise StateMachineError(HardwareErrorCode.BELT_POSITION_SENSOR_FAILED, str(e))
+            elif "workpiece" in str(e).lower():
+                raise StateMachineError(HardwareErrorCode.WORKPIECE_NOT_DETECTED, str(e))
+            else:
+                raise StateMachineError(OperationErrorCode.OPERATION_FAILED, str(e))
+
+    def _execute_test_run(self) -> Any:
+        """Execute test run with specific error handling"""
+        try:
+            return self._safe_call('testRun')
+        except Exception as e:
+            raise StateMachineError(OperationErrorCode.OPERATION_FAILED, str(e))
 
     def _safe_call(self, method_name: str, *args, **kwargs) -> Any:
-        """Safely call an original application method"""
+        """Safely call an original application method with error code mapping"""
         method = self.original_methods.get(method_name)
         if not method:
-            raise AttributeError(f"Method {method_name} not found in original application")
+            raise StateMachineError(
+                code=StateMachineErrorCode.CONTEXT_CALLBACK_MISSING,
+                message=f"Method {method_name} not found in original application",
+                context={'method': method_name}
+            )
 
-        return method(*args, **kwargs)
+        try:
+            return method(*args, **kwargs)
+        except Exception as e:
+            # Map common exceptions to appropriate error codes
+            error_message = str(e).lower()
+
+            if "timeout" in error_message:
+                raise StateMachineError(OperationErrorCode.OPERATION_TIMEOUT, str(e))
+            elif "connection" in error_message:
+                if "robot" in error_message:
+                    raise StateMachineError(HardwareErrorCode.ROBOT_CONNECTION_FAILED, str(e))
+                elif "camera" in error_message:
+                    raise StateMachineError(HardwareErrorCode.CAMERA_CONNECTION_FAILED, str(e))
+                else:
+                    raise StateMachineError(HardwareErrorCode.ROBOT_CONNECTION_FAILED, str(e))
+            elif "emergency" in error_message or "stop" in error_message:
+                raise StateMachineError(SafetyErrorCode.EMERGENCY_STOP_ACTIVATED, str(e))
+            elif "safety" in error_message:
+                raise StateMachineError(ValidationErrorCode.SAFETY_CHECK_FAILED, str(e))
+            else:
+                # Generic operation failure
+                raise StateMachineError(OperationErrorCode.OPERATION_FAILED, str(e))
 
     def _process_event(self, params: Dict[str, Any]):
-        """Process an event through the state machine"""
-        event_name = params.get('event')
-        event_data = params.get('data', {})
-        self.state_machine.process_event(event_name, event_data)
+        """Process an event through the state machine with error handling"""
+        try:
+            event_name = params.get('event')
+            event_data = params.get('data', {})
+            self.state_machine.process_event(event_name, event_data)
+        except Exception as e:
+            self.context._record_error(StateMachineErrorCode.EVENT_PROCESSING_FAILED, str(e))
+            raise
 
-    # Action callback implementations
+    # Action callback implementations with error handling
     def _log_state_entry(self, params: Dict[str, Any]):
         """Log state entry"""
         state = params.get('state', 'Unknown')
         print(f"Entering state: {state}")
 
     def _ensure_safe_position(self, params: Dict[str, Any]):
-        """Ensure robot is in safe position"""
+        """Ensure robot is in safe position with error handling"""
         try:
             if hasattr(self.original_app, 'robotService') and self.original_app.robotService:
                 self.original_app.robotService.moveToStartPosition()
                 print("Robot moved to safe position")
+            else:
+                self.context._record_error(HardwareErrorCode.ROBOT_CONNECTION_FAILED,
+                                           "Robot service not available")
         except Exception as e:
+            self.context._record_error(HardwareErrorCode.ROBOT_MOVEMENT_FAILED, str(e))
             print(f"Failed to move robot to safe position: {e}")
+            # Don't raise here as this is a safety action that should not fail state transitions
 
     def _log_error(self, params: Dict[str, Any]):
-        """Log error state entry"""
+        """Log error state entry with error code information"""
         error_msg = self.context.error_message or "Unknown error"
-        print(f"ERROR STATE: {error_msg}")
+        error_code = params.get('error_code', 'Unknown')
+        print(f"ERROR STATE [{error_code}]: {error_msg}")
+
+        # Log error details if available
+        if hasattr(self.context, 'error_tracker'):
+            recent_errors = self.context.error_tracker.get_recent_errors(1)
+            if recent_errors:
+                error_context = recent_errors[0]
+                error_info = ERROR_REGISTRY.get_error_info(error_context.code)
+                if error_info:
+                    print(f"Error Info: {error_info.name}")
+                    print(f"Suggested Action: {error_info.suggested_action}")
 
     def _move_to_safe_position(self, params: Dict[str, Any]):
-        """Move robot to safe position on error"""
+        """Move robot to safe position on error with comprehensive error handling"""
         try:
             if hasattr(self.original_app, 'robotService') and self.original_app.robotService:
                 self.original_app.robotService.moveToStartPosition()
                 print("Robot moved to safe position due to error")
+            else:
+                self.context._record_error(HardwareErrorCode.ROBOT_CONNECTION_FAILED,
+                                           "Robot service not available for safe position")
+                print("WARNING: Cannot move robot to safe position - robot service unavailable")
         except Exception as e:
-            print(f"Failed to move robot to safe position on error: {e}")
+            self.context._record_error(HardwareErrorCode.ROBOT_MOVEMENT_FAILED, str(e))
+            print(f"CRITICAL: Failed to move robot to safe position on error: {e}")
+            # This is critical - robot may be in unsafe position
 
     def _pause_operations(self, params: Dict[str, Any]):
         """Pause current operations"""
         print("Operations paused")
-        # Could implement actual pause logic here
+        try:
+            # Could implement actual pause logic here
+            # For example, pause robot motion, stop glue flow, etc.
+            pass
+        except Exception as e:
+            self.context._record_error(OperationErrorCode.OPERATION_FAILED, str(e))
 
     def _clear_error(self, params: Dict[str, Any]):
         """Clear error state"""
         self.context.error_message = ""
+
+        # Clear active errors in error tracker
+        if hasattr(self.context, 'error_tracker'):
+            active_errors = self.context.error_tracker.get_active_errors()
+            for error_context in active_errors:
+                self.context.error_tracker.clear_error(error_context.code)
+
         print("Error state cleared")
 
     def _handle_application_error(self, params: Dict[str, Any]):
-        """Handle application-specific errors"""
+        """Handle application-specific errors with enhanced error management"""
         error_msg = params.get('error', 'Unknown error')
-        print(f"Application Error: {error_msg}")
+        error_code = params.get('error_code', OperationErrorCode.OPERATION_FAILED)
+
+        print(f"Application Error [{error_code}]: {error_msg}")
         self.context.error_message = error_msg
 
-        # Try to move robot to safe position
-        self._move_to_safe_position(params)
+        # Record in error tracker
+        self.context._record_error(error_code, error_msg)
+
+        # Try automated recovery first
+        recovery_successful = self.context.error_recovery_manager.handle_error(
+            error_code=error_code,
+            state_machine=self.state_machine,
+            state=self.state_machine.get_current_state(),
+            additional_data={'error_message': error_msg}
+        )
+
+        if not recovery_successful:
+            # Fallback to safe position
+            self._move_to_safe_position(params)
 
     # ========================================================================
     # PUBLIC API - Enhanced methods that replace original application methods
