@@ -210,7 +210,7 @@ class Controller:
         response = Response.from_dict(response)
 
         if response.status == Constants.RESPONSE_STATUS_ERROR:
-            FeedbackProvider.showMessage(response.message)
+            # FeedbackProvider.showMessage(response.message)
             request = Constants.CAMERA_ACTION_RAW_MODE_OFF
             response = self.requestSender.sendRequest(request)
             response = Response.from_dict(response)

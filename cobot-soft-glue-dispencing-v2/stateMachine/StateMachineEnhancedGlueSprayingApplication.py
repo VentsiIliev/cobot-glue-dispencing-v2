@@ -119,6 +119,7 @@ class ExecutingTrajectoryState(State):
                 contour_matching = context.operation_data.get('contour_matching', True)
                 result = application._original_start(contour_matching)
                 context.operation_result = result
+                print(f"Trajectory execution result: {result}")
                 application.state_machine.process_event(Event.OPERATION_COMPLETED)
             except Exception as e:
                 context.error_message = str(e)
@@ -201,6 +202,7 @@ class CreatingWorkpieceState(State):
         def create_workpiece():
             try:
                 result = application._original_createWorkpiece()
+                print("Workpiece creation result:", result)
                 context.operation_result = result
                 application.state_machine.process_event(Event.OPERATION_COMPLETED)
             except Exception as e:

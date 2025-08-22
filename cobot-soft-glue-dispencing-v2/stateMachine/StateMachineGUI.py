@@ -1,13 +1,24 @@
 import sys
 import threading
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QPushButton, QLabel
+    QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QTextEdit
 )
-from PyQt6.QtCore import QTimer
+from PyQt6.QtCore import QTimer, pyqtSignal, QObject
 
 # Import your state machine modules
 from stateMachine.DummyGlueSprayingApplication import DummyGlueSprayingApplication
 from stateMachine.StateMachineEnhancedGlueSprayingApplication import StateMachineEnhancedGlueSprayingApplication
+
+
+class EmittingStream(QObject):
+    text_written = pyqtSignal(str)
+
+    def write(self, text):
+        if text.strip():  # avoid empty newlines
+            self.text_written.emit(text)
+
+    def flush(self):
+        pass  # not needed for this simple logger
 
 
 class StateMachineGUI(QWidget):
@@ -16,7 +27,7 @@ class StateMachineGUI(QWidget):
         self.app_instance = app_instance
 
         self.setWindowTitle("State Machine Tester")
-        self.resize(300, 250)
+        self.resize(500, 400)
 
         layout = QVBoxLayout()
 
@@ -34,10 +45,28 @@ class StateMachineGUI(QWidget):
             ("Reset", self.app_instance.reset),
         ]
 
+        # Add these after your main control buttons
+        simulate_buttons = [
+            ("Simulate Success", lambda: app_instance.state_machine.process_event("OPERATION_COMPLETED")),
+            ("Simulate Failure", lambda: app_instance.state_machine.process_event("OPERATION_FAILED")),
+            ("Simulate Error", lambda: app_instance.state_machine.process_event("ERROR_OCCURRED")),
+        ]
+
+        for text, cmd in simulate_buttons:
+            btn = QPushButton(text)
+            btn.clicked.connect(lambda _, c=cmd: self.run_command(c))
+            layout.addWidget(btn)
+
         for text, cmd in buttons:
             btn = QPushButton(text)
             btn.clicked.connect(lambda _, c=cmd: self.run_command(c))
             layout.addWidget(btn)
+
+        # Log output panel
+        self.log_output = QTextEdit()
+        self.log_output.setReadOnly(True)
+        self.log_output.setStyleSheet("background-color: #111; color: #0f0; font-family: Consolas;")
+        layout.addWidget(self.log_output)
 
         self.setLayout(layout)
 
@@ -45,6 +74,10 @@ class StateMachineGUI(QWidget):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_state_label)
         self.timer.start(200)
+
+        # Redirect stdout to the GUI log
+        sys.stdout = EmittingStream(text_written=self.append_log)
+        sys.stderr = EmittingStream(text_written=self.append_log)
 
     def run_command(self, command):
         def worker():
@@ -54,6 +87,9 @@ class StateMachineGUI(QWidget):
 
     def update_state_label(self):
         self.state_label.setText(f"Current State: {self.app_instance.get_current_state().name}")
+
+    def append_log(self, text):
+        self.log_output.append(text.strip())
 
 
 if __name__ == "__main__":

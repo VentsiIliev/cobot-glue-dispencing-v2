@@ -3,7 +3,7 @@
   "CELL_CONFIG": [
     {
       "id": 1,
-      "type": "TypeB",
+      "type": "TypeD",
       "url": "http://192.168.222.143/weight1",
       "capacity": 5000
     },

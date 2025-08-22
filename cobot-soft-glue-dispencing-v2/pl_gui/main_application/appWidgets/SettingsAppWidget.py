@@ -47,6 +47,8 @@ class SettingsAppWidget(AppWidget):
             self.content_widget.update_camera_feed_requested.connect(lambda: updateCameraFeedCallback())
             self.content_widget.raw_mode_requested.connect(lambda state: onRawModeRequested(state))
             print("Controller:", self.controller)
+            if self.controller is None:
+                raise ValueError("Controller is not set for SettingsAppWidget")
             cameraSettings, robotSettings, glueSettings = self.controller.handle(GET_SETTINGS)
             self.content_widget.updateCameraSettings(cameraSettings)
             self.content_widget.updateRobotSettings(robotSettings)

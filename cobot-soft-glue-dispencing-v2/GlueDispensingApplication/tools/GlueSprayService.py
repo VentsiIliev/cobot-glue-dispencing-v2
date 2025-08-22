@@ -65,8 +65,8 @@ class GlueSprayService:
     def __init__(self,generatorTurnOffTimeout=10):
 
         self.relaysId = 5
-        # self.motorsId = 1
-        self.motorsId = 5
+        self.motorsId = 1
+        #self.motorsId = 5
         self.fanId = 5
         self.generatorTurnOffTimeout = generatorTurnOffTimeout # minutes
         self.timer = Timer(self.generatorTurnOffTimeout, self.generatorOff)

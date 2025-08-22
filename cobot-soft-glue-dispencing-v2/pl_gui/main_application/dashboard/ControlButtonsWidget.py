@@ -15,7 +15,7 @@ class ControlButtonsWidget(QWidget):
         self.init_ui()
         self.connect_signals()
         self.broker = MessageBroker()
-        self.broker.subscribe("system/state", self.on_system_status_update)
+        # self.broker.subscribe("system/state", self.on_system_status_update)
 
     def init_ui(self):
         # Main layout for the widget
