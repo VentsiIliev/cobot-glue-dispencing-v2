@@ -10,11 +10,24 @@ from StateMachineFramework.StateMachineConfig import StateMachineConfig
 
 
 class StateMachineFactory:
-    """Factory for creating state machines from configuration"""
+    """
+    Factory for creating state machines from configuration.
+
+    Provides methods to create state machines from config objects, JSON, or dictionaries.
+    """
 
     @staticmethod
     def from_config(config: StateMachineConfig, context: BaseContext = None) -> BaseStateMachine:
-        """Create state machine from configuration"""
+        """
+        Create a state machine from a StateMachineConfig object.
+
+        Args:
+            config (StateMachineConfig): State machine configuration.
+            context (BaseContext, optional): Shared context.
+
+        Returns:
+            BaseStateMachine: The constructed state machine.
+        """
         if context is None:
             context = BaseContext()
 
@@ -22,13 +35,31 @@ class StateMachineFactory:
 
     @staticmethod
     def from_json(json_config: str, context: BaseContext = None) -> BaseStateMachine:
-        """Create state machine from JSON configuration"""
+        """
+        Create a state machine from a JSON configuration string.
+
+        Args:
+            json_config (str): JSON string representing the configuration.
+            context (BaseContext, optional): Shared context.
+
+        Returns:
+            BaseStateMachine: The constructed state machine.
+        """
         config_dict = json.loads(json_config)
         return StateMachineFactory.from_dict(config_dict, context)
 
     @staticmethod
     def from_dict(config_dict: Dict[str, Any], context: BaseContext = None) -> BaseStateMachine:
-        """Create state machine from dictionary configuration"""
+        """
+        Create a state machine from a dictionary configuration.
+
+        Args:
+            config_dict (Dict[str, Any]): Dictionary representing the configuration.
+            context (BaseContext, optional): Shared context.
+
+        Returns:
+            BaseStateMachine: The constructed state machine.
+        """
         # Convert dict to StateConfig objects
         states = {}
         for state_name, state_data in config_dict['states'].items():

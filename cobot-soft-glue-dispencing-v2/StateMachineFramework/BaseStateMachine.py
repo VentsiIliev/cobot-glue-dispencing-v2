@@ -11,9 +11,32 @@ from StateMachineFramework.StateMachineConfig import StateMachineConfig
 
 
 class BaseStateMachine:
-    """Generic, configurable state machine"""
+    """
+    Generic, configurable state machine framework.
+
+    This class manages states, transitions, and event processing for a state machine.
+    It supports configurable states, global transitions, error recovery, and event logging.
+
+    Attributes:
+        config (StateMachineConfig): Configuration for states, transitions, and initial state.
+        context (BaseContext): Shared context for state machine execution.
+        current_state (Optional[BaseState]): The currently active state.
+        states (Dict[str, BaseState]): Mapping of state names to state objects.
+        event_queue (List[tuple]): Queue of events to be processed.
+        event_lock (threading.Lock): Lock for synchronizing event queue access.
+        running (bool): Indicates if the state machine is running.
+        event_thread (Optional[threading.Thread]): Thread for event processing.
+        history (List[Dict[str, Any]]): List of state transitions and associated data.
+    """
 
     def __init__(self, config: StateMachineConfig, context: BaseContext):
+        """
+        Initialize the BaseStateMachine.
+
+        Args:
+            config (StateMachineConfig): State machine configuration.
+            context (BaseContext): Shared context for state machine execution.
+        """
         self.config = config
         self.context = context
         self.current_state: Optional[BaseState] = None
@@ -31,19 +54,31 @@ class BaseStateMachine:
         self._register_default_callbacks()
 
     def _initialize_states(self):
-        """Initialize states from configuration"""
+        """
+        Initialize states from configuration.
+
+        Populates the `states` dictionary with state objects based on the configuration.
+        """
         for state_name, state_config in self.config.states.items():
             state = ConfigurableState(state_config)
             self.states[state_name] = state
 
     def _register_default_callbacks(self):
-        """Register default system callbacks"""
+        """
+        Register default system callbacks.
+
+        Sets up error handling, state change logging, and event logging callbacks in the context.
+        """
         self.context.register_callback('on_error', self._handle_error)
         self.context.register_callback('on_state_changed', self._log_state_change)
         self.context.register_callback('on_event_processed', self._log_event)
 
     def start(self):
-        """Start the state machine"""
+        """
+        Start the state machine.
+
+        Launches the event processing thread and transitions to the initial state.
+        """
         if self.running:
             return
 
@@ -55,13 +90,26 @@ class BaseStateMachine:
         self.transition_to(self.config.initial_state)
 
     def stop(self):
-        """Stop the state machine"""
+        """
+        Stop the state machine.
+
+        Stops the event processing thread and halts event handling.
+        """
         self.running = False
         if self.event_thread:
             self.event_thread.join(timeout=1.0)
 
     def transition_to(self, new_state_name: str, event_data: Dict[str, Any] = None):
-        """Transition to a new state"""
+        """
+        Transition to a new state.
+
+        Args:
+            new_state_name (str): Name of the state to transition to.
+            event_data (Dict[str, Any], optional): Additional data associated with the transition.
+
+        Returns:
+            bool: True if transition succeeded, False otherwise.
+        """
         if new_state_name not in self.states:
             self.context.execute_callback('on_error', {
                 'error': f"State {new_state_name} not found",
@@ -107,13 +155,23 @@ class BaseStateMachine:
             return False
 
     def process_event(self, event: Union[BaseEvent, str], data: Dict[str, Any] = None):
-        """Add event to processing queue"""
+        """
+        Add event to processing queue.
+
+        Args:
+            event (Union[BaseEvent, str]): Event object or event name.
+            data (Dict[str, Any], optional): Additional data for the event.
+        """
         with self.event_lock:
             event_name = event.name if isinstance(event, BaseEvent) else event
             self.event_queue.append((event_name, data or {}))
 
     def _process_events(self):
-        """Process events from queue"""
+        """
+        Process events from queue.
+
+        Continuously processes events, handles transitions, updates context, and logs events.
+        """
         while self.running:
             try:
                 with self.event_lock:
@@ -155,21 +213,46 @@ class BaseStateMachine:
                 })
 
     def get_current_state(self) -> Optional[str]:
-        """Get current state name"""
+        """
+        Get current state name.
+
+        Returns:
+            Optional[str]: Name of the current state, or None if not set.
+        """
         return self.current_state.name if self.current_state else None
 
     def get_history(self) -> List[Dict[str, Any]]:
-        """Get state transition history"""
+        """
+        Get state transition history.
+
+        Returns:
+            List[Dict[str, Any]]: List of state transitions and associated data.
+        """
         return self.history.copy()
 
     def can_handle_event(self, event_name: str) -> bool:
-        """Check if current state can handle the event"""
+        """
+        Check if current state can handle the event.
+
+        Args:
+            event_name (str): Name of the event to check.
+
+        Returns:
+            bool: True if the event can be handled, False otherwise.
+        """
         if not self.current_state:
             return False
         return event_name in self.current_state.transitions or event_name in self.config.global_transitions
 
     def _handle_error(self, params: Dict[str, Any]):
-        """Default error handler"""
+        """
+        Default error handler.
+
+        Args:
+            params (Dict[str, Any]): Parameters containing error information.
+
+        Handles errors by printing a message and attempting error recovery if configured.
+        """
         error_msg = params.get('error', 'Unknown error')
         print(f"State Machine Error: {error_msg}")
 
@@ -180,13 +263,27 @@ class BaseStateMachine:
             self.transition_to(recovery_state, {'error': error_msg})
 
     def _log_state_change(self, params: Dict[str, Any]):
-        """Default state change logger"""
+        """
+        Default state change logger.
+
+        Args:
+            params (Dict[str, Any]): Parameters containing state change information.
+
+        Logs state transitions to the console.
+        """
         from_state = params.get('from_state', 'None')
         to_state = params.get('to_state', 'None')
         print(f"State Transition: {from_state} -> {to_state}")
 
     def _log_event(self, params: Dict[str, Any]):
-        """Default event logger"""
+        """
+        Default event logger.
+
+        Args:
+            params (Dict[str, Any]): Parameters containing event information.
+
+        Logs processed events to the console.
+        """
         event = params.get('event', 'Unknown')
         state = params.get('state', 'None')
         print(f"Event Processed: {event} in state {state}")

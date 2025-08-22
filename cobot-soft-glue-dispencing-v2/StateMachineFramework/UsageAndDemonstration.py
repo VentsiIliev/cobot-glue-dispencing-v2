@@ -5,10 +5,18 @@ from StateMachineFramework.BaseContext import BaseContext
 from StateMachineFramework.BaseStateMachine import BaseStateMachine
 from StateMachineFramework.StateMachineBuilder import StateMachineBuilder
 
+"""
+Module demonstrating usage examples for the state machine framework.
+"""
+
 
 def create_example_state_machine() -> BaseStateMachine:
-    """Example: Create a simple state machine using the builder"""
+    """
+    Example: Create a simple state machine using the builder.
 
+    Returns:
+        BaseStateMachine: The constructed example state machine.
+    """
     context = BaseContext()
 
     # Register example callbacks
@@ -43,7 +51,9 @@ def create_example_state_machine() -> BaseStateMachine:
 
 
 if __name__ == "__main__":
-    # Example usage
+    """
+    Demonstrates the creation and usage of an example state machine.
+    """
     import time
     sm = create_example_state_machine()
     sm.start()
